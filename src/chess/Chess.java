@@ -236,6 +236,12 @@ public class Chess
         return new int[]{-1,-1};
     }
     
+     public static String convertInternalToAlgebraic(int[] pos)
+    {
+        // TODO: implement this method
+        return "";
+    }
+    
     // get a square color
     public static int getSquareColor(String coord)
     {

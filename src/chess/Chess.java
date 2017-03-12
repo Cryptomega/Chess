@@ -248,7 +248,28 @@ public class Chess
             return '\u2654'; // white king char
         else if ( color == BLACK && type == KING )
             return '\u265A'; // black king char
-        return 'x';
+        else if ( color == WHITE && type == QUEEN )
+            return '\u2655';
+        else if ( color == BLACK && type == QUEEN )
+            return '\u265B';
+        else if ( color == WHITE && type == BISHOP )
+            return '\u2657';
+        else if ( color == BLACK && type == BISHOP )
+            return '\u265D';
+        else if ( color == WHITE && type == KNIGHT )
+            return '\u2658';
+        else if ( color == BLACK && type == KNIGHT )
+            return '\u265E';
+        else if ( color == WHITE && type == ROOK )
+            return '\u2656';
+        else if ( color == BLACK && type == ROOK )
+            return '\u265C';
+        else if ( color == WHITE && type == PAWN )
+            return '\u2659';
+        else if ( color == BLACK && type == PAWN )
+            return '\u265F';
+        
+        return '?';
     }
     
     /********************************************

@@ -54,7 +54,7 @@ public class Chess
     
     /************************************************
      * The Chess Board -  This board using an internal
-     * coordinate system, [row][col]
+     * coordinate system, [rank][column]
      * a1 -> [0][0], a 2-> [0][1], b1 -> [1][0], etc.
      * Cells contain reference to the occupying 
      * chess piece, or null if square is empty.
@@ -165,7 +165,7 @@ public class Chess
     public int makeMove(String from, String to)
     {
         // convert string coords to internal coords
-        // call makeMove(int[], int[])
+        // TODO: call makeMove(int[], int[])
         return -1; 
     }
     
@@ -176,9 +176,9 @@ public class Chess
                 || to[0] < 0 || to[0] > 7 
                 || from[1] < 0 || from[1] > 7
                 || to[1] < 0 || to[1] > 7 )
-            throw new IllegalArgumentException("Invalid arguements for makeMove(int[], int[])");
+            throw new IllegalArgumentException("Invalid arguements for makeMove");
         
-        // make the move!
+        // TODO: make the move!
         
         return -1; 
     }
@@ -225,14 +225,16 @@ public class Chess
     // conversion method
     public static int[] convertAlgebraicToInternal(String coord)
     {
-        // TODO: implement this method
-        return new int[]{-1,-1};
+        int rank =  Character.getNumericValue(coord.charAt(1)) - 1;
+        int col = (int)coord.charAt(0) - 97;
+        return new int[]{rank,col};
     }
     
-     public static String convertInternalToAlgebraic(int[] pos)
+    public static String convertInternalToAlgebraic(int[] coord)
     {
-        // TODO: implement this method
-        return "";
+        if ( !isValidCoord(coord) )
+            throw new IllegalArgumentException("Invalid Coordinate");
+        return ((char) (coord[1]+97)) + String.valueOf(coord[0] + 1);
     }
     
     // get a square color

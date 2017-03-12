@@ -34,16 +34,22 @@ public class ChessDriver
        //get the board
         ChessPiece[][] board = chess.getBoard();
         
+        ArrayList<ChessPiece> pieces = chess.getPieces();
+        
         
         printBoard(board);
-     
-
-
         
-    }
-    
+        
+        
+        //ChessPiece a = pieces.get(0);
+        //System.out.print(a.getName() + "(" + a.getType() +") ");
+        //System.out.print( Chess.getColorString(a.getColor()) );
+        //System.out.println(" " + a.getPosition() + " moves:" + a.getMoveCount() );
+        
 
-    
+    }
+
+
     // Draws the text chess board to console
     private static void printBoard(ChessPiece[][] board)
     {

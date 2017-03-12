@@ -4,7 +4,6 @@
 package chess;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  *  Chess
@@ -15,7 +14,7 @@ import java.util.Arrays;
 public class Chess 
 {
     /* ****************************************
-     *  Declare constants
+     * * * * Declare constants * * *
      * ****************************************/
     // Game Colors
     public static final int BLACK =  0;
@@ -34,48 +33,55 @@ public class Chess
     public static final int MOVE_ILLEGAL                = 101;
     public static final int MOVE_ILLEGAL_KING_IN_CHECK  = 102;
     public static final int MOVE_ILLEGAL_IMPEDED        = 103;
+    public static final int MOVE_ILLEGAL_SQUARE_EMPTY   = 104;
+    public static final int MOVE_ILLEGAL_WRONG_PLAYER   = 105;
+    public static final int AMBIGUOUS_PROMOTION         = 110;
+    
         
     // Piece states
     public static final int PIECE_ACTIVE        = 200;
     public static final int PIECE_CAPTURED      = 201;
     public static final int PIECE_PROMOTED      = 202;
+    public static final int PIECE_NOT_PLACED    = 203;
     
     
     /* ****************************************
-     *  Game State variables
+     * * * Game State variables * * *
      * ****************************************/
     private boolean mIsGameActive;
     private boolean mIsWhitesTurn;
+    private int mGameCounter;
     private boolean mWhiteOffersDraw;
     private boolean mBlackOffersDraw;
     //private boolean mInEditMode = false;
+    //private boolean mInAnalysisMode = false;
     //private boolean mIsChess960 = false;
     
     
     /************************************************
      * The Chess Board -  This board using an internal
      * coordinate system, [rank][column]
-     * a1 -> [0][0], a 2-> [0][1], b1 -> [1][0], etc.
+     * a1 -> [0][0], a2 -> [0][1], b1 -> [1][0], etc.
      * Cells contain reference to the occupying 
-     * chess piece, or null if square is empty.
+     * chess piece, or null if the square is empty.
      ***********************************************/
-    private ChessPiece[][] mChessBoard = new ChessPiece[8][8];
+    private final ChessPiece[][] mChessBoard = new ChessPiece[8][8];
     
     
     /** ************************************************
-     * ArrayList of all chess pieces
+     * * * * ArrayList of all chess pieces * * * 
      **************************************************/
-    private ArrayList<ChessPiece> mChessPieces; 
+    private final ArrayList<ChessPiece> mChessPieces; 
     
     
     /**************************************************
-     * History ArrayList
+     * * * * History ArrayList * * * 
      *************************************************/
-    private ArrayList<RecordOfMove> mChessHistory;
+    private final ArrayList<RecordOfMove> mChessHistory;
     
     
     /* *************************************************
-     * Constructor
+     * * * * Constructor * * * 
      **************************************************/
     public Chess()
     {
@@ -86,10 +92,10 @@ public class Chess
     
     
     /* *************************************************
-     *   Public Methods
+     * * * * Public Methods * * * 
      * *************************************************/
     
-    // returns true if game is currently active
+    // true if game is active. Use startGame() to activate
     public boolean isGameActive() { return mIsGameActive; }
     public boolean isWhitesTurn() { return mIsWhitesTurn; }
     
@@ -135,7 +141,9 @@ public class Chess
         
         mWhiteOffersDraw = false;
         mBlackOffersDraw = false;
-        mIsGameActive = false;        
+        mIsGameActive = false;  
+        mGameCounter = 0;
+        mIsWhitesTurn = true;
     }
     
     /**
@@ -145,12 +153,11 @@ public class Chess
     public void setupGame()
     {
         clearGame();
-        mIsWhitesTurn = true;
        
         //TODO: Create pieces and place on board
 
-        addPieceToGame(WHITE, KING, new int[]{0,4} );
-        addPieceToGame(BLACK, KING, new int[]{7,4} );
+        addPieceToGame(WHITE, KING, 0, 4 );
+        addPieceToGame(BLACK, KING, 7, 4 );
     }
     
     
@@ -162,31 +169,69 @@ public class Chess
         mIsGameActive = true;
     }
     
-    public int makeMove(String from, String to)
+    
+    /**
+     * Makes a move on the board. 
+     * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8=Q"
+     * the third, sixth, and eighth+ character can be any character
+     * @return returns MOVE_LEGAL (100) if the move is accepted, 
+     *         otherwise returns error code
+     */
+    public int makeMove(String move)
     {
-        // convert string coords to internal coords
-        // TODO: call makeMove(int[], int[])
+        // TODO: convert string coords to internal coords
+        // TODO: call makeMove(int, int, int, int)
         return -1; 
     }
     
-    public int makeMove(int[] from, int[] to)
+    /**
+     * Makes a move using internal coordinates
+     * @param fromRank value from 0-7
+     * @param fromCol value from 0-7
+     * @param toRank value from 0-7
+     * @param toCol value from 0-7
+     * @return returns MOVE_LEGAL (100) if the move is accepted, 
+     *         otherwise returns error code
+     */
+    public int makeMove(int fromRank, int fromCol, int toRank, int toCol)
     {
-        if ( from.length != 2 || to.length != 2 
-                || from[0] < 0 || from[0] > 7
-                || to[0] < 0 || to[0] > 7 
-                || from[1] < 0 || from[1] > 7
-                || to[1] < 0 || to[1] > 7 )
+        // TODO: check if piece exist at "from" coord, 
+        //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
+        if ( !isValidCoord(fromRank, fromCol) || !isValidCoord(toRank, toCol) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
         
-        // TODO: make the move!
+        // TODO: call makeMove(int,int) on the chess piece!
         
         return -1; 
     }
     
+    /**
+     * Makes a move using internal coordinates, providing promotion type if needed
+     * @param fromRank value from 0-7
+     * @param fromCol value from 0-7
+     * @param toRank value from 0-7
+     * @param toCol value from 0-7
+     * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
+     * @return returns MOVE_LEGAL (100) if the move is accepted, 
+     *         otherwise returns error code
+     */
+    public int makeMove(int fromRank, int fromCol, int toRank, int toCol, int promotionType)
+    {
+        // TODO: check if piece exist at "from" coord, 
+        //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
+        if ( !isValidCoord(fromRank, fromCol) || !isValidCoord(toRank, toCol) )
+            throw new IllegalArgumentException("Invalid arguements for makeMove");
+        
+        // TODO: call makeMove(int,int,int) on the chess piece!
+        
+        return -1; 
+    }
+    
+    // TODO: add validateMove(int,int,int,int) and/or (string) maybe?
     
     
     /* *************************************************
-     *   Private Methods
+     * * * * Private Methods * * * 
      * *************************************************/
 
     /**
@@ -194,12 +239,27 @@ public class Chess
      * */
     private ChessPiece addPieceToGame(int color, int type)
     {
+        if ( color != WHITE && color != BLACK )
+            throw new IllegalArgumentException("Invalid color argument");
         ChessPiece newPiece;
-        // TODO: validate parameters
-        if ( type == KING )
-            newPiece = new King(color);
-        else
-            return null;
+        switch (type) 
+        {
+            case KING:
+                newPiece = new King(color);
+                break;
+            case QUEEN:
+                throw new UnsupportedOperationException("Queen not yet implemented.");
+            case BISHOP:
+                throw new UnsupportedOperationException("Bishop not yet implemented.");
+            case KNIGHT:
+                throw new UnsupportedOperationException("Knight not yet implemented.");
+            case ROOK:
+                throw new UnsupportedOperationException("Rook not yet implemented.");
+            case PAWN:
+                throw new UnsupportedOperationException("Pawn not yet implemented.");
+            default:
+                throw new IllegalArgumentException("Invalid piece type argument");
+        }
 
         mChessPieces.add(newPiece);
         return newPiece;
@@ -209,45 +269,50 @@ public class Chess
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
      * and places on board
      * */
-    private ChessPiece addPieceToGame(int color, int type, int[] pos)
+    private ChessPiece addPieceToGame(int color, int type, int rank, int col)
     {
+        if ( !isValidCoord(rank,col) )
+            throw new IllegalArgumentException("Invalid coordinate argument");
+        if ( mChessBoard[rank][col] != null )  // position is already occupied!
+            return null;    
         ChessPiece newPiece = addPieceToGame(color, type);
-        if ( newPiece == null )
-            return null;
-        newPiece.setPosition(pos);
+        //if ( newPiece == null )
+        //    return null;
+        newPiece.setPosition(rank, col);
         return newPiece;
     }
     
     
     /* *************************************************
-     *   Static Methods
+     * * * * Static Methods * * * 
      * *************************************************/
-    // conversion method
-    public static int[] convertAlgebraicToInternal(String coord)
+    // conversion methods
+    public static int convertAlgebraicToInternalRank(String coord)
+        { return  Character.getNumericValue(coord.toLowerCase().charAt(1)) - 1; }
+    public static int convertAlgebraicToInternalCol(String coord)
+        { return (int)coord.toLowerCase().charAt(0) - 97; }
+    
+    public static String convertInternalToAlgebraic(int rank, int col)
     {
-        int rank =  Character.getNumericValue(coord.charAt(1)) - 1;
-        int col = (int)coord.charAt(0) - 97;
-        return new int[]{rank,col};
+        if ( !isValidCoord(rank, col) )
+            throw new IllegalArgumentException("Invalid Coordinate");
+        return ((char) (col+97)) + String.valueOf(rank + 1);
     }
     
-    public static String convertInternalToAlgebraic(int[] coord)
-    {
-        if ( !isValidCoord(coord) )
-            throw new IllegalArgumentException("Invalid Coordinate");
-        return ((char) (coord[1]+97)) + String.valueOf(coord[0] + 1);
-    }
     
     // get a square color
     public static int getSquareColor(String coord)
     {
-        // TODO: implement
-        return -1; 
+        return getSquareColor(
+                Chess.convertAlgebraicToInternalRank(coord),
+                Chess.convertAlgebraicToInternalCol(coord) ); 
     }
-    public static int getSquareColor(int[] pos)
+    
+    public static int getSquareColor(int rank, int col)
     {
-        if ( !isValidCoord(pos) )
+        if ( !isValidCoord(rank, col) )
             throw new IllegalArgumentException("Invalid Coordinate");
-        return (pos[0]+pos[1])%2; 
+        return (rank+col)%2; 
     }
     
     public static char getUnicode(int color, int type)
@@ -279,66 +344,180 @@ public class Chess
         return '?';
     }
     
-    private static boolean isValidCoord(int[] coord)
+    public static String getName(int type)
     {
-        if ( coord.length != 2 
-                || coord[0] < 0 || coord[0] > 7
-                || coord[1] < 0 || coord[1] > 7 )
-            return false;
-        return true;
+        switch (type) {
+            case KING:
+                return "King";
+            case QUEEN:
+                return "Queen";
+            case BISHOP:
+                return "Bishop";
+            case KNIGHT:
+                return "Knight";
+            case ROOK:
+                return "Rook";
+            case PAWN:
+                return "Pawn";
+            default:
+                return "InvalidType";
+        }
+    }
+    
+    public static String getColorString(int color)
+    {
+        if (color == WHITE)
+            return "White";
+        else if (color == BLACK)
+            return "Black";
+        return "InvalidColor";
+    }
+    
+    private static boolean isValidCoord(int rank, int col)
+    {
+        return (rank >= 0 && rank <= 7
+                && col >= 0 && col <= 7);
     }
     
     
     
-    /********************************************
-     * Abstract Chess Piece Class
-     * Contains common methods
-     * *******************************************/
+    /**************************************************************************
+     * ************************************************************************
+     * ************************************************************************
+     *  * * * * Abstract Chess Piece Class * * * * * * * * * * * * * * * * * *
+     * ************************************************************************
+     * ************************************************************************
+     * ************************************************************************/
     public abstract class ChessPiece
     {
-        protected int[] mPosition = new int[2];
+        protected int mRank;
+        protected int mCol;
         protected String mPositionString = "";
         protected int mType;
         protected int mColor;
+        protected int mStatus;
+        protected boolean mIsActive;
+        protected int mMoveCount = 0;
         
-        
-        private void setPosition(String pos)
+        /**
+         * Makes a move given the algebraic coordinate of target square
+         * @param coord algebraic coordinate to move to, along with promotion 
+         *              if needed. ex: "e4", "c1", "b8=Q"
+         * @return MOVE_LEGAL (100) if its a good move, 
+         *                otherwise returns error code
+         */
+        public int makeMove(String coord)
         {
-            // TODO: set internal position
-            mPositionString = pos;
+            // TODO: Override in Pawn class to check for promotion option
+            //       and call appropriate method
+            return makeMove(
+                    Chess.convertAlgebraicToInternalRank(coord),
+                    Chess.convertAlgebraicToInternalCol(coord) );
         }
         
-        private void setPosition(int[] pos)
+        
+        /**
+         * MAKES THE MOVE! after validating the move with validateMove()
+         * @param rank value from 0-7
+         * @param col value from 0-7
+         * @return MOVE_LEGAL (100) if its a good move, 
+         *                otherwise returns error code
+         */
+        abstract public int makeMove(int rank, int col);
+        
+        
+        /**
+         * MAKES THE MOVE! after validating the move with validateMove()
+         * @param rank value from 0-7
+         * @param col value from 0-7
+         * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
+         * @return MOVE_LEGAL (100) if its a good move, 
+         *                otherwise returns error code
+         */
+        public int makeMove(int rank, int col, int promotionType)
         {
-            if (pos.length != 2)
+            // TODO: Override in Pawn class to use promotionType param
+            // Otherwise, just ignore promotionType
+            return makeMove(rank, col);
+        }
+        
+        /**
+         * Validates a move.
+         * @param rank value from 0-7
+         * @param col value from 0-7
+         * @return MOVE_LEGAL (100) if its a good move, 
+         *                otherwise returns error code
+         */
+        abstract public int validateMove(int rank, int col);
+                
+        
+        private void setPosition(String coord)
+        {
+            setPosition(
+                    Chess.convertAlgebraicToInternalRank(coord),
+                    Chess.convertAlgebraicToInternalCol(coord) );
+        }
+        
+        private void setPosition(int rank, int col)
+        {
+            if ( !isValidCoord(rank, col) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
-            // TODO: maybe some more arguement validation? private so might not be needed
-            mPosition = pos;
-            mChessBoard[pos[0]][pos[1]] = this;
+            mRank = rank;
+            mCol = col;
+            mPositionString = convertInternalToAlgebraic(rank, col);
+            mChessBoard[rank][col] = this;
         }
         
         // public get methods
         public String getPosition()
             { return mPositionString; } // TODO: make sure this is safe
-        public int[] getPositionInternal() 
-            { return Arrays.copyOf(mPosition, mPosition.length); }
+        public int getPositionInternalRank() { return mRank; }
+        public int getPositionInternalCol() { return mCol; }
         public int getType() { return mType; }
         public int getColor() { return mColor; }
-        public char getUnicode()
-            { return Chess.getUnicode(mColor, mType); }
+        public int getStatus() { return mStatus; }
+        public int getMoveCount() { return mMoveCount; }
+        public String getName() { return Chess.getName(mType); }
+        public char getUnicode() { return Chess.getUnicode(mColor, mType); }
     }
+    
+    /**************************************************************************
+     * ************************************************************************
+     * * * * The Actual Chess Pieces * * * * * * * * * * * * * * * * * * * * * 
+     * ************************************************************************
+     **************************************************************************/
     
     /**
      * King class
      */
     private class King extends ChessPiece
     {
+        // Constructor
         private King(int color)
         {
             mColor = color;
             mType = KING;
         }
+
+
+
+
+        @Override
+        public int validateMove(int rank, int col) 
+        {
+            // TODO: implement
+            return -1;
+        }
+
+        @Override
+        public int makeMove(int rank, int col) 
+        {
+            // TODO: implement
+            return -1;            
+        }
     }
+    
+    // TODO: Implement all the pieces!!!!
     
 
     /** *****************************************************

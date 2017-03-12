@@ -241,6 +241,12 @@ public class Chess
         // TODO: implement
         return -1; 
     }
+    public static int getSquareColor(int[] pos)
+    {
+        if ( !isValidCoord(pos) )
+            throw new IllegalArgumentException("Invalid Coordinate");
+        return (pos[0]+pos[1])%2; 
+    }
     
     public static char getUnicode(int color, int type)
     {
@@ -268,9 +274,19 @@ public class Chess
             return '\u2659';
         else if ( color == BLACK && type == PAWN )
             return '\u265F';
-        
         return '?';
     }
+    
+    private static boolean isValidCoord(int[] coord)
+    {
+        if ( coord.length != 2 
+                || coord[0] < 0 || coord[0] > 7
+                || coord[1] < 0 || coord[1] > 7 )
+            return false;
+        return true;
+    }
+    
+    
     
     /********************************************
      * Abstract Chess Piece Class

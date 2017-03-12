@@ -242,6 +242,15 @@ public class Chess
         return -1; 
     }
     
+    public static char getUnicode(int color, int type)
+    {
+        if( color == WHITE && type == KING)
+            return '\u2654'; // white king char
+        else if ( color == BLACK && type == KING )
+            return '\u265A'; // black king char
+        return 'x';
+    }
+    
     /********************************************
      * Abstract Chess Piece Class
      * Contains common methods
@@ -269,39 +278,30 @@ public class Chess
             mChessBoard[pos[0]][pos[1]] = this;
         }
         
-        public String getPosition() { return mPositionString; } // TODO: make sure this is safe
+        // public get methods
+        public String getPosition()
+            { return mPositionString; } // TODO: make sure this is safe
         public int[] getPositionInternal() 
             { return Arrays.copyOf(mPosition, mPosition.length); }
-        
         public int getType() { return mType; }
         public int getColor() { return mColor; }
-        
-        public abstract char getUnicode();
+        public char getUnicode()
+            { return Chess.getUnicode(mColor, mType); }
     }
     
     /**
      * King class
      */
     private class King extends ChessPiece
-    {        
+    {
         private King(int color)
         {
             mColor = color;
             mType = KING;
         }
-
-        @Override
-        public char getUnicode()
-        {
-            if( mColor == WHITE )
-                return '\u2654'; // white king char
-            else
-                return '\u265A'; // black king char
-        }
     }
     
-    
-    
+
     /** *****************************************************
      * ChessMove object for keeping track of game history
      *********************************************************/

@@ -15,7 +15,7 @@ import java.util.Arrays;
 public class Chess 
 {
     /* ****************************************
-     *  Declare some constants
+     *  Declare constants
      * ****************************************/
     // Game Colors
     public static final int BLACK =  0;
@@ -59,23 +59,23 @@ public class Chess
      * Cells contain reference to the occupying 
      * chess piece, or null if square is empty.
      ***********************************************/
-    ChessPiece[][] mChessBoard = new ChessPiece[8][8];
+    private ChessPiece[][] mChessBoard = new ChessPiece[8][8];
     
     
     /** ************************************************
      * ArrayList of all chess pieces
      **************************************************/
-    ArrayList<ChessPiece> mChessPieces; 
+    private ArrayList<ChessPiece> mChessPieces; 
     
     
     /**************************************************
      * History ArrayList
      *************************************************/
-    ArrayList<RecordOfMove> mChessHistory;
+    private ArrayList<RecordOfMove> mChessHistory;
     
     
     /* *************************************************
-     * Public Constructor
+     * Constructor
      **************************************************/
     public Chess()
     {
@@ -120,7 +120,7 @@ public class Chess
      * Clears the pieces array (mChessPieces)
      * Clears the history stack
      */
-    private void clearGame()
+    public final void clearGame()
     {
         mIsGameActive = false;
         for (int i = 0; i < 8; i++)
@@ -148,16 +148,8 @@ public class Chess
         mIsWhitesTurn = true;
        
         //TODO: Create pieces and place on board
-        addPieceToGame(WHITE, KING, new int[]{0,0} );
-        addPieceToGame(WHITE, KING, new int[]{0,1} );
-        addPieceToGame(WHITE, KING, new int[]{0,2} );
-        addPieceToGame(WHITE, KING, new int[]{0,3} );
+
         addPieceToGame(WHITE, KING, new int[]{0,4} );
-        addPieceToGame(WHITE, KING, new int[]{0,5} );
-        addPieceToGame(WHITE, KING, new int[]{0,6} );
-        addPieceToGame(WHITE, KING, new int[]{0,7} );
-        
-        
         addPieceToGame(BLACK, KING, new int[]{7,4} );
     }
     
@@ -215,6 +207,7 @@ public class Chess
     
     /**
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
+     * and places on board
      * */
     private ChessPiece addPieceToGame(int color, int type, int[] pos)
     {

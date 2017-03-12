@@ -34,32 +34,59 @@ public class ChessDriver
        //get the board
         ChessPiece[][] board = chess.getBoard();
         
-
-
+        
+        
+        
         printBoard(board);
-        //System.out.println("Exiting...");
+        
     }
     
-    // Text-based chess board
-    // private static char[][] board = new char[8][8];
+
     
-    /*
-    private static void clearBoard() 
+    // Draws the text chess board to console
+    private static void printBoard(ChessPiece[][] board)
     {
-        for (int i = 0; i < 8; i++)
+        printFirstRow();
+        for (int i = 7; i >= 0; i--)
+        {
+            System.out.print(String.valueOf(1+i) + " \u2502\u2001");
             for (int j = 0; j < 8; j++)
             {
-                board[i][j] = ' ';
+                if ( board[i][j] == null )
+                    System.out.print('\u2001');
+                else
+                    System.out.print(board[i][j].getUnicode());
+                System.out.print("\u2001\u2502\u2001");
             }
+            System.out.println();
+            printRowDivider();
+        }
+        System.out.print("    a\u2001  b\u2001  c\u2001  d\u2001  ");
+        System.out.println("e\u2001  f\u2001  g\u2001  h");
+            
+        
     }
     
-    private static void insertDummyData() 
+    private static void printFirstRow()
     {
-        board[0][4] = '\u2654';
-        board[7][4] = '\u265A';
+        System.out.print("  ");
+        System.out.print("\u250C");
+        for (int i = 0; i < 7; i++)
+            System.out.print("\u2500\u2500\u2500\u252C");
+        System.out.println("\u2500\u2500\u2500\u2510");
     }
-    */
+    private static void printRowDivider()
+    {
+        char[] chars = new char[BOARD_WIDTH];
+        Arrays.fill(chars, '-');
+        System.out.print("  ");
+        System.out.println(chars);
+    }
     
+    private static final int BOARD_WIDTH = 38;
+
+    
+    /*
     // Draws the text chess board to console
     private static void printBoard(ChessPiece[][] board)
     {
@@ -94,4 +121,5 @@ public class ChessDriver
     }
     
     private static final int BOARD_WIDTH = 38;
+    */
 }

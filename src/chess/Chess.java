@@ -191,17 +191,17 @@ public class Chess
     /**
      * Makes a move using internal coordinates
      * @param fromRank value from 0-7
-     * @param fromCol value from 0-7
+     * @param fromFile value from 0-7
      * @param toRank value from 0-7
-     * @param toCol value from 0-7
+     * @param toFile value from 0-7
      * @return returns MOVE_LEGAL (100) if the move is accepted, 
      *         otherwise returns error code
      */
-    public int makeMove(int fromRank, int fromCol, int toRank, int toCol)
+    public int makeMove(int fromRank, int fromFile, int toRank, int toFile)
     {
         // TODO: check if piece exist at "from" coord, 
         //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
-        if ( !isValidCoord(fromRank, fromCol) || !isValidCoord(toRank, toCol) )
+        if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
         
         // TODO: call makeMove(int,int) on the chess piece!
@@ -212,18 +212,18 @@ public class Chess
     /**
      * Makes a move using internal coordinates, providing promotion type if needed
      * @param fromRank value from 0-7
-     * @param fromCol value from 0-7
+     * @param fromFile value from 0-7
      * @param toRank value from 0-7
-     * @param toCol value from 0-7
+     * @param toFile value from 0-7
      * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
      * @return returns MOVE_LEGAL (100) if the move is accepted, 
      *         otherwise returns error code
      */
-    public int makeMove(int fromRank, int fromCol, int toRank, int toCol, int promotionType)
+    public int makeMove(int fromRank, int fromFile, int toRank, int toFile, int promotionType)
     {
         // TODO: check if piece exist at "from" coord, 
         //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
-        if ( !isValidCoord(fromRank, fromCol) || !isValidCoord(toRank, toCol) )
+        if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
         
         // TODO: call makeMove(int,int,int) on the chess piece!
@@ -293,7 +293,7 @@ public class Chess
     // conversion methods
     public static int convertAlgebraicToInternalRank(String coord)
         { return  Character.getNumericValue(coord.toLowerCase().charAt(1)) - 1; }
-    public static int convertAlgebraicToInternalCol(String coord)
+    public static int convertAlgebraicToInternalFile(String coord)
         { return (int)coord.toLowerCase().charAt(0) - 97; }
     
     public static String convertInternalToAlgebraic(int rank, int file)
@@ -307,9 +307,8 @@ public class Chess
     // get a square color
     public static int getSquareColor(String coord)
     {
-        return getSquareColor(
-                Chess.convertAlgebraicToInternalRank(coord),
-                Chess.convertAlgebraicToInternalCol(coord) ); 
+        return getSquareColor(Chess.convertAlgebraicToInternalRank(coord),
+                Chess.convertAlgebraicToInternalFile(coord) ); 
     }
     
     public static int getSquareColor(int rank, int file)
@@ -414,9 +413,8 @@ public class Chess
         {
             // TODO: Override in Pawn class to check for promotion option
             //       and call appropriate method
-            return makeMove(
-                    Chess.convertAlgebraicToInternalRank(coord),
-                    Chess.convertAlgebraicToInternalCol(coord) );
+            return makeMove(Chess.convertAlgebraicToInternalRank(coord),
+                    Chess.convertAlgebraicToInternalFile(coord) );
         }
         
         
@@ -457,9 +455,8 @@ public class Chess
         
         private void setPosition(String coord)
         {
-            setPosition(
-                    Chess.convertAlgebraicToInternalRank(coord),
-                    Chess.convertAlgebraicToInternalCol(coord) );
+            setPosition(Chess.convertAlgebraicToInternalRank(coord),
+                    Chess.convertAlgebraicToInternalFile(coord) );
         }
         
         private void setPosition(int rank, int file)
@@ -476,7 +473,7 @@ public class Chess
         public String getPosition()
             { return mPositionString; } // TODO: make sure this is safe
         public int getPositionInternalRank() { return mRank; }
-        public int getPositionInternalCol() { return mFile; }
+        public int getPositionInternalFile() { return mFile; }
         public int getType() { return mType; }
         public int getColor() { return mColor; }
         public int getStatus() { return mStatus; }

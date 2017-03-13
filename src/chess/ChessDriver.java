@@ -39,9 +39,11 @@ public class ChessDriver
         
         printBoard(board);
         
-        
+        //chess.makeMove(0,4,1,4);
+        System.out.println(chess.makeMove(0, 4, 0, 0, 5));
         
         //ChessPiece a = pieces.get(0);
+        
         //System.out.print(a.getName() + "(" + a.getType() +") ");
         //System.out.print( Chess.getColorString(a.getColor()) );
         //System.out.println(" " + a.getPosition() + " moves:" + a.getMoveCount() );

@@ -173,6 +173,7 @@ public class Chess
     }
     
     
+    
     /**
      * Makes a move on the board using algebraic coordinates.
      * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8=Q"
@@ -183,10 +184,16 @@ public class Chess
      */
     public int makeMove(String move)
     {
+        if ( move.length() < 5 )
+            throw new IllegalArgumentException("Invalid input string");
+        String from = move.substring(0, 1);
         // TODO: convert string coords to internal coords
+        // TODO: check for promotion type
         // TODO: call makeMove(int, int, int, int)
+        //       or makeMove(int, int, int, int, int)
         return -1; 
     }
+    
     
     /**
      * Makes a move using internal coordinates
@@ -199,15 +206,16 @@ public class Chess
      */
     public int makeMove(int fromRank, int fromFile, int toRank, int toFile)
     {
-        // TODO: check if piece exist at "from" coord, 
-        //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
         if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
-        
-        // TODO: call makeMove(int,int) on the chess piece!
-        
-        return -1; 
+        // check if piece exist at "from" coord, 
+        if ( mChessBoard[fromRank][fromFile] == null )
+            return MOVE_ILLEGAL_SQUARE_EMPTY;
+        else
+            return mChessBoard[fromRank][fromFile].makeMove(toRank, toFile);
+
     }
+    
     
     /**
      * Makes a move using internal coordinates, providing promotion type if needed
@@ -221,15 +229,15 @@ public class Chess
      */
     public int makeMove(int fromRank, int fromFile, int toRank, int toFile, int promotionType)
     {
-        // TODO: check if piece exist at "from" coord, 
-        //       return MOVE_ILLEGAL_SQUARE_EMPTY if not
         if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
-        
-        // TODO: call makeMove(int,int,int) on the chess piece!
-        
-        return -1; 
+        // call makeMove(rank,file,promotionType) on the chess piece!
+        if ( mChessBoard[fromRank][fromFile] == null )
+            return MOVE_ILLEGAL_SQUARE_EMPTY;
+        else
+            return mChessBoard[fromRank][fromFile].makeMove(toRank, toFile, promotionType);
     }
+    
     
     // TODO: add validateMove(int,int,int,int) and/or (string) maybe?
     
@@ -416,20 +424,10 @@ public class Chess
             return makeMove(Chess.convertAlgebraicToInternalRank(coord),
                     Chess.convertAlgebraicToInternalFile(coord) );
         }
-        
-        
-        /**
-         * MAKES THE MOVE! after validating the move with validateMove()
-         * @param rank value from 0-7
-         * @param file value from 0-7
-         * @return MOVE_LEGAL (100) if its a good move, 
-         *                otherwise returns error code
-         */
-        abstract public int makeMove(int rank, int file);
-        
+                
         
         /**
-         * MAKES THE MOVE! after validating the move with validateMove()
+         * MAKES THE MOVE! after validating the move by calling validateMove()
          * @param rank value from 0-7
          * @param file value from 0-7
          * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
@@ -443,6 +441,17 @@ public class Chess
             return makeMove(rank, file);
         }
         
+        
+        /**
+         * MAKES THE MOVE! after validating the move by calling validateMove()
+         * @param rank value from 0-7
+         * @param file value from 0-7
+         * @return MOVE_LEGAL (100) if its a good move, 
+         *                otherwise returns error code
+         */
+        abstract public int makeMove(int rank, int file);
+        
+        
         /**
          * Validates a move.
          * @param rank value from 0-7
@@ -455,12 +464,14 @@ public class Chess
         
         private void setPosition(String coord)
         {
+            // TODO: check that mGameActive == false
             setPosition(Chess.convertAlgebraicToInternalRank(coord),
                     Chess.convertAlgebraicToInternalFile(coord) );
         }
         
         private void setPosition(int rank, int file)
         {
+            // TODO: check that mGameActive == false
             if ( !isValidCoord(rank, file) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
             mRank = rank;
@@ -500,21 +511,26 @@ public class Chess
             mType = KING;
         }
 
-
-
-
         @Override
         public int validateMove(int rank, int file) 
         {
             // TODO: implement
-            return -1;
+            return MOVE_LEGAL; // returns valid for now
         }
 
         @Override
         public int makeMove(int rank, int file) 
         {
             // TODO: implement
-            return -1;            
+            int code = validateMove(rank, file);
+            if ( code != MOVE_LEGAL ) return code;
+            
+            // test code
+            System.out.println("Executing " 
+                + Chess.getName(mType) + ".makeMove("
+                + rank + ", " + file + ")" );
+            
+            return code;            
         }
     }
     

@@ -158,12 +158,16 @@ public class Chess
      */
     public void setupGame()
     {
+        // TODO: consider requiring mIsGameActive to be false 
+        //if ( mIsGameActive == true )
+        //    throw new IllegalStateException("Cannot add piece while game is active");
         clearGame();
        
         //TODO: Create pieces and place on board
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(BLACK, KING, 7, 4 );
+
     }
     
     
@@ -263,6 +267,8 @@ public class Chess
      * */
     private ChessPiece addPieceToGame(int color, char type)
     {
+        //if ( mIsGameActive == true )
+        //    throw new IllegalStateException("Cannot add piece while game is active");
         if ( color != WHITE && color != BLACK )
             throw new IllegalArgumentException("Invalid color argument");
         ChessPiece newPiece;
@@ -298,7 +304,7 @@ public class Chess
         if ( !isValidCoord(rank,file) )
             throw new IllegalArgumentException("Invalid coordinate argument");
         if ( mChessBoard[rank][file] != null )  // position is already occupied!
-            return null;    
+            throw new IllegalStateException("Cannot add piece on occupied square");   
         ChessPiece newPiece = addPieceToGame(color, type);
         //if ( newPiece == null )
         //    return null;
@@ -448,7 +454,7 @@ public class Chess
         //protected String mPositionString = "";
         protected char mType;
         protected int mColor;
-        protected int mStatus;
+        protected int mStatus = PIECE_NOT_PLACED;
         protected boolean mIsActive = false;
         protected int mMoveCount = 0;
         
@@ -506,30 +512,49 @@ public class Chess
         abstract public int validateMove(int rank, int file);
         
         
-        private void beingCaptured()
+        protected void captured()
         {
             // TODO: implement
         }
                 
         
-        private void setPosition(String coord)
+        protected void setPosition(String coord)
         {
-            // TODO: check that mGameActive == false
             setPosition(Chess.convertAlgebraicToInternalRank(coord),
                     Chess.convertAlgebraicToInternalFile(coord) );
         }
         
-        private void setPosition(int rank, int file)
+        protected void setPosition(int rank, int file)
         {
-            // TODO: check that mGameActive == false
+            //if ( mIsGameActive == true )
+             //   throw new IllegalStateException("Cannot set piece position while game is active");
             if ( !isValidCoord(rank, file) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
+
+            // check if square is already occupied
+            if ( mChessBoard[rank][file] != null )
+                throw new IllegalStateException("Cannot set piece on occupied square");
+            
             mRank = rank;
             mFile = file;
             //mPositionString = convertInternalToAlgebraic(rank, file);
             mChessBoard[rank][file] = this;
             mStatus = PIECE_ACTIVE;
             mIsActive = true;
+            
+        }
+        
+        // used by makeMove()
+        protected void updatePosition(int rank, int file)
+        {
+            // TODO: implement
+            // set current position to null
+            mChessBoard[mRank][mFile] = null;
+            // set reference to this piece at new square
+            mChessBoard[rank][file] = this;
+            // set the position in the piece
+            mRank = rank;
+            mFile = file;
         }
         
         // public get methods
@@ -577,7 +602,7 @@ public class Chess
             
             // DEBUG printout
             System.out.println("Executing ("
-                    + Chess.convertInternalToAlgebraic(mRank, mFile)
+                    + getPosition()
                     + ") " + Chess.getName(mType) 
                     + ".makeMove(" + rank + ", " + file + ")" );
 
@@ -597,8 +622,8 @@ public class Chess
             // check if target square is occupied.
             // if so, capture that piece
             
-            // set the new position
-            // update mChessBoard
+            // set the new position and update mChessBoard
+            updatePosition(rank, file);
             
             // add move to mChessHistory
             

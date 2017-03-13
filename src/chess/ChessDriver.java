@@ -4,9 +4,9 @@
 package chess;
 
 import chess.Chess.ChessPiece;
-import com.sun.xml.internal.ws.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Scanner;
 
 
 /**
@@ -25,31 +25,38 @@ public class ChessDriver
         chess.setupGame();
         chess.startGame();
         
-        // get the board and/or pieces 
-        // use makeMove() to make moves
+        // input string variable
+        String input = "";
+        Scanner scanner = new Scanner(System.in);
         
-        // get game pieces
+        // game loop
+        while ( true )
+        {
+            ChessPiece[][] board = chess.getBoard();
+            printBoard(board);
+            
+            System.out.print("Enter move:");
+            input = scanner.nextLine();
+            
+            if ( input.equals("00") )
+                break;
+            
+            int code;
+            try { code = chess.makeMove(input); }
+            catch (Exception e) 
+            {
+                System.out.println(e.getMessage());
+                continue;
+            }
+            
+            System.out.println("\n");
+            System.out.println(code + ":" + Chess.getMoveCodeText(code));
+             
+        }
+        
+        
         //ArrayList<ChessPiece> pieces = chess.getPieces();
-        
-        ChessPiece[][] board = chess.getBoard();
-        
-        ArrayList<ChessPiece> pieces = chess.getPieces();
-        
-        
-        printBoard(board);
-        
-        //chess.makeMove(0,4,1,4);
-        
-        int code = chess.makeMove("e1 e7");
-        System.out.println(code + ":" + Chess.getMoveCodeText(code));
-        
-        //ChessPiece a = pieces.get(0);
-        //System.out.println( a.makeMove(0,0, 'x') );
-        
-        //System.out.print(a.getName() + "(" + a.getType() +") ");
-        //System.out.print( Chess.getColorString(a.getColor()) );
-        //System.out.println(" " + a.getPosition() + " moves:" + a.getMoveCount() );
-        
+
 
     }
 

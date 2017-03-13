@@ -35,8 +35,9 @@ public class ChessDriver
             ChessPiece[][] board = chess.getBoard();
             printBoard(board);
             
-            System.out.print("Enter move:");
+            System.out.print("Enter move(00 to exit):");
             input = scanner.nextLine();
+            
             
             if ( input.equals("00") )
                 break;
@@ -49,19 +50,17 @@ public class ChessDriver
                 continue;
             }
             
-            System.out.println("\n");
+            //System.out.println("\n");
             System.out.println(code + ":" + Chess.getMoveCodeText(code));
-             
+            
+            break; // DEBUG            
         }
-        
-        
-        //ArrayList<ChessPiece> pieces = chess.getPieces();
 
+        //ArrayList<ChessPiece> pieces = chess.getPieces();
 
     }
 
-
-    // Draws the text chess board to console
+    // Draws the text chess board to console with unicode 
     private static void printBoard(ChessPiece[][] board)
     {
         printFirstRow();
@@ -114,6 +113,4 @@ public class ChessDriver
             System.out.print("-\u2500-\u2534");
         System.out.println("-\u2500-\u2518");
     }
-
-    
 }

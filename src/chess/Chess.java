@@ -101,6 +101,7 @@ public class Chess
     // true if game is active. Use startGame() to activate
     public boolean isGameActive() { return mIsGameActive; }
     public int whoseTurn() { return mWhoseTurn; }
+    public int getMoveNumber() { return mGameCounter / 2; }
     
     /**
      * Get the chess board with references to the active pieces on it
@@ -449,8 +450,7 @@ public class Chess
      * ************************************************************************/
     public abstract class ChessPiece
     {
-        protected int mRank;
-        protected int mFile;
+        protected int mRank, mFile;
         //protected String mPositionString = "";
         protected char mType;
         protected int mColor;
@@ -619,18 +619,21 @@ public class Chess
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL ) return code;
             
+            // check if we are checking the enemy
+            // check if we are checkmating
+            boolean check, checkmate;
+            
+            // add move to mChessHistory
+            
             // check if target square is occupied.
             // if so, capture that piece
             
             // set the new position and update mChessBoard
             updatePosition(rank, file);
             
-            // add move to mChessHistory
-            
             // increment mMoveCount
             
             // call endTurn() method
-            
             
             return code;            
         }
@@ -644,6 +647,65 @@ public class Chess
      *********************************************************/
     private class RecordOfMove
     {
-        // TODO: imlement this class
+        final int moveNumber;
+        final String movePrefix; // "1. " or "1... "
+        final String moveText;   // Readable move notation
+        
+        // The piece moved. required
+        final ChessPiece PieceMoved;
+        final int fromRank, fromFile;
+        final int toRank, toFile;
+        
+        // Captured piece. null if nothing captured
+        final ChessPiece PieceCaptured;
+        final int capturedRank, capturedFile;
+                
+        // Piece promoted to. null if no promotion
+        final ChessPiece PiecePromoted;
+        final char promotionType;
+        
+        public RecordOfMove(ChessPiece moved, int rank, int file, 
+                ChessPiece captured, ChessPiece promo, 
+                boolean check, boolean checkmate)
+        {
+            PieceMoved = moved;
+            fromRank = moved.getPositionInternalRank();
+            fromFile = moved.getPositionInternalFile();
+            toRank = rank;
+            toFile = file;
+            
+            PieceCaptured = captured;
+            if ( PieceCaptured != null )
+            {
+                capturedRank = moved.getPositionInternalRank();
+                capturedFile = moved.getPositionInternalFile();
+            } else{
+                capturedRank = -1;
+                capturedFile = -1;
+            }
+            
+            PiecePromoted = promo;
+            if ( PiecePromoted != null )
+                promotionType = PiecePromoted.getType();
+            else
+                promotionType = 'x';
+            
+            moveNumber = mGameCounter;
+            if ( mWhoseTurn == WHITE )
+                movePrefix = String.valueOf(moveNumber) + ". ";
+            else
+                movePrefix = String.valueOf(moveNumber) + "... ";
+            
+            // construct move string
+            StringBuilder sb = new StringBuilder();
+            if ( PieceMoved.getType() != PAWN )
+                sb.append(PieceMoved.getType());
+            sb.append(Chess.convertInternalToAlgebraic(fromRank, fromFile))
+            .append( (PieceCaptured == null) ? " " : "x" )
+            .append(Chess.convertInternalToAlgebraic(toRank, toFile))
+            .append( (PiecePromoted == null) ? "" : "=" + promotionType )
+            .append( checkmate ? "#" : check ? "+" : "");
+            moveText = sb.toString();
+        }
     }
 }

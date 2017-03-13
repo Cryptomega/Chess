@@ -60,7 +60,7 @@ public class Chess
     
     /************************************************
      * The Chess Board -  This board using an internal
-     * coordinate system, [rank][column]
+     * coordinate system, [rank][file]
      * a1 -> [0][0], a2 -> [0][1], b1 -> [1][0], etc.
      * Cells contain reference to the occupying 
      * chess piece, or null if the square is empty.
@@ -109,7 +109,6 @@ public class Chess
             for (int i = 0; i < 8; i++)
                 copy[i] = mChessBoard[i].clone();
             return copy;
-            //return  mChessBoard.clone(); 
         } 
     
     /**
@@ -128,27 +127,31 @@ public class Chess
      */
     public final void clearGame()
     {
+        // reset game variables
         mIsGameActive = false;
-        for (int i = 0; i < 8; i++)
-            for (int j = 0; j < 8; j++)
-                mChessBoard[i][j] = null;
-        
-        if ( mChessPieces != null && !mChessPieces.isEmpty() )
-            mChessPieces.clear();
-        
-        if ( mChessHistory != null && !mChessHistory.isEmpty() )
-            mChessHistory.clear();
-        
         mWhiteOffersDraw = false;
         mBlackOffersDraw = false;
         mIsGameActive = false;  
         mGameCounter = 0;
         mIsWhitesTurn = true;
+        
+        // clear game board
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                mChessBoard[i][j] = null;
+        
+        // clear pieces array
+        if ( mChessPieces != null && !mChessPieces.isEmpty() )
+            mChessPieces.clear();
+        
+        // clear history
+        if ( mChessHistory != null && !mChessHistory.isEmpty() )
+            mChessHistory.clear();
     }
     
     /**
-     * Sets up the pieces on the board
-     * for a standard game
+     * Sets up the pieces on the board for a 
+     * standard game. Call startGame() to begin!
      */
     public void setupGame()
     {
@@ -171,9 +174,10 @@ public class Chess
     
     
     /**
-     * Makes a move on the board. 
+     * Makes a move on the board using algebraic coordinates.
      * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8=Q"
-     * the third, sixth, and eighth+ character can be any character
+     * the third character can be any character, and extraneous
+     * characters are ignored
      * @return returns MOVE_LEGAL (100) if the move is accepted, 
      *         otherwise returns error code
      */
@@ -269,16 +273,16 @@ public class Chess
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
      * and places on board
      * */
-    private ChessPiece addPieceToGame(int color, int type, int rank, int col)
+    private ChessPiece addPieceToGame(int color, int type, int rank, int file)
     {
-        if ( !isValidCoord(rank,col) )
+        if ( !isValidCoord(rank,file) )
             throw new IllegalArgumentException("Invalid coordinate argument");
-        if ( mChessBoard[rank][col] != null )  // position is already occupied!
+        if ( mChessBoard[rank][file] != null )  // position is already occupied!
             return null;    
         ChessPiece newPiece = addPieceToGame(color, type);
         //if ( newPiece == null )
         //    return null;
-        newPiece.setPosition(rank, col);
+        newPiece.setPosition(rank, file);
         return newPiece;
     }
     
@@ -292,11 +296,11 @@ public class Chess
     public static int convertAlgebraicToInternalCol(String coord)
         { return (int)coord.toLowerCase().charAt(0) - 97; }
     
-    public static String convertInternalToAlgebraic(int rank, int col)
+    public static String convertInternalToAlgebraic(int rank, int file)
     {
-        if ( !isValidCoord(rank, col) )
+        if ( !isValidCoord(rank, file) )
             throw new IllegalArgumentException("Invalid Coordinate");
-        return ((char) (col+97)) + String.valueOf(rank + 1);
+        return ((char) (file+97)) + String.valueOf(rank + 1);
     }
     
     
@@ -308,11 +312,11 @@ public class Chess
                 Chess.convertAlgebraicToInternalCol(coord) ); 
     }
     
-    public static int getSquareColor(int rank, int col)
+    public static int getSquareColor(int rank, int file)
     {
-        if ( !isValidCoord(rank, col) )
+        if ( !isValidCoord(rank, file) )
             throw new IllegalArgumentException("Invalid Coordinate");
-        return (rank+col)%2; 
+        return (rank+file)%2; 
     }
     
     public static char getUnicode(int color, int type)
@@ -373,10 +377,10 @@ public class Chess
         return "InvalidColor";
     }
     
-    private static boolean isValidCoord(int rank, int col)
+    private static boolean isValidCoord(int rank, int file)
     {
         return (rank >= 0 && rank <= 7
-                && col >= 0 && col <= 7);
+                && file >= 0 && file <= 7);
     }
     
     
@@ -391,7 +395,7 @@ public class Chess
     public abstract class ChessPiece
     {
         protected int mRank;
-        protected int mCol;
+        protected int mFile;
         protected String mPositionString = "";
         protected int mType;
         protected int mColor;
@@ -419,36 +423,36 @@ public class Chess
         /**
          * MAKES THE MOVE! after validating the move with validateMove()
          * @param rank value from 0-7
-         * @param col value from 0-7
+         * @param file value from 0-7
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        abstract public int makeMove(int rank, int col);
+        abstract public int makeMove(int rank, int file);
         
         
         /**
          * MAKES THE MOVE! after validating the move with validateMove()
          * @param rank value from 0-7
-         * @param col value from 0-7
+         * @param file value from 0-7
          * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int col, int promotionType)
+        public int makeMove(int rank, int file, int promotionType)
         {
             // TODO: Override in Pawn class to use promotionType param
             // Otherwise, just ignore promotionType
-            return makeMove(rank, col);
+            return makeMove(rank, file);
         }
         
         /**
          * Validates a move.
          * @param rank value from 0-7
-         * @param col value from 0-7
+         * @param file value from 0-7
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        abstract public int validateMove(int rank, int col);
+        abstract public int validateMove(int rank, int file);
                 
         
         private void setPosition(String coord)
@@ -458,21 +462,21 @@ public class Chess
                     Chess.convertAlgebraicToInternalCol(coord) );
         }
         
-        private void setPosition(int rank, int col)
+        private void setPosition(int rank, int file)
         {
-            if ( !isValidCoord(rank, col) )
+            if ( !isValidCoord(rank, file) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
             mRank = rank;
-            mCol = col;
-            mPositionString = convertInternalToAlgebraic(rank, col);
-            mChessBoard[rank][col] = this;
+            mFile = file;
+            mPositionString = convertInternalToAlgebraic(rank, file);
+            mChessBoard[rank][file] = this;
         }
         
         // public get methods
         public String getPosition()
             { return mPositionString; } // TODO: make sure this is safe
         public int getPositionInternalRank() { return mRank; }
-        public int getPositionInternalCol() { return mCol; }
+        public int getPositionInternalCol() { return mFile; }
         public int getType() { return mType; }
         public int getColor() { return mColor; }
         public int getStatus() { return mStatus; }
@@ -503,14 +507,14 @@ public class Chess
 
 
         @Override
-        public int validateMove(int rank, int col) 
+        public int validateMove(int rank, int file) 
         {
             // TODO: implement
             return -1;
         }
 
         @Override
-        public int makeMove(int rank, int col) 
+        public int makeMove(int rank, int file) 
         {
             // TODO: implement
             return -1;            

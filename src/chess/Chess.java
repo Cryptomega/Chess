@@ -29,15 +29,16 @@ public class Chess
     public static final char PAWN =   'P';
     
     // makeMove() and isValidMove() return codes
-    public static final int MOVE_LEGAL                  = 100;
-    public static final int MOVE_ILLEGAL                = 101;
-    public static final int MOVE_ILLEGAL_KING_IN_CHECK  = 102;
-    public static final int MOVE_ILLEGAL_IMPEDED        = 103;
-    public static final int MOVE_ILLEGAL_SQUARE_EMPTY   = 104;
-    public static final int MOVE_ILLEGAL_WRONG_PLAYER   = 105;
-    public static final int AMBIGUOUS_PROMOTION         = 120;
-    public static final int GAME_NOT_ACTIVE             = 121;
-    public static final int PIECE_NOT_ACTIVE            = 122;
+    public static final int MOVE_LEGAL                        = 100;
+    public static final int MOVE_ILLEGAL                      = 101;
+    public static final int MOVE_ILLEGAL_KING_IN_CHECK        = 102;
+    public static final int MOVE_ILLEGAL_IMPEDED              = 103;
+    public static final int MOVE_ILLEGAL_SQUARE_EMPTY         = 104;
+    public static final int MOVE_ILLEGAL_WRONG_PLAYER         = 105;
+    public static final int MOVE_ILLEGAL_CASTLE_THROUGH_CHECK = 106;
+    public static final int AMBIGUOUS_PROMOTION               = 120;
+    public static final int GAME_NOT_ACTIVE                   = 121;
+    public static final int PIECE_NOT_ACTIVE                  = 122;
     
         
     // Piece states
@@ -335,6 +336,36 @@ public class Chess
         if ( !isValidCoord(rank, file) )
             throw new IllegalArgumentException("Invalid Coordinate");
         return (rank+file)%2; 
+    }
+    
+    public static String getMoveCodeText(int code)
+    {
+        switch(code)
+        {
+            case MOVE_LEGAL:
+                return "Move is legal.";
+            case MOVE_ILLEGAL:                
+                return "Not a legal move.";
+            case MOVE_ILLEGAL_KING_IN_CHECK:  
+                return "King is in check.";
+            case MOVE_ILLEGAL_IMPEDED:     
+                return "Move is impeded.";
+            case MOVE_ILLEGAL_SQUARE_EMPTY:   
+                return "No piece at the square.";
+            case MOVE_ILLEGAL_WRONG_PLAYER:
+                return "Wrong Player.";
+            case MOVE_ILLEGAL_CASTLE_THROUGH_CHECK:
+                return "Cannot castle through check.";
+            case AMBIGUOUS_PROMOTION:
+                return "Promotion ambiguous.";
+            case GAME_NOT_ACTIVE:
+                return "Game is not active.";
+            case PIECE_NOT_ACTIVE:
+                return "Piece is not in play.";
+            default:
+                return "Unknown Code";
+        }
+        
     }
     
     public static char getUnicode(int color, char type)

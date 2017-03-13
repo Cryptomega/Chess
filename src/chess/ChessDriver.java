@@ -40,8 +40,8 @@ public class ChessDriver
         
         //chess.makeMove(0,4,1,4);
         
-        System.out.print( chess.makeMove("e8 e7") );
-        System.out.println("(Move code)");
+        int code = chess.makeMove("e1 e7");
+        System.out.println(code + ":" + Chess.getMoveCodeText(code));
         
         //ChessPiece a = pieces.get(0);
         //System.out.println( a.makeMove(0,0, 'x') );

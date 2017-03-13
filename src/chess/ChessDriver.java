@@ -31,7 +31,6 @@ public class ChessDriver
         // get game pieces
         //ArrayList<ChessPiece> pieces = chess.getPieces();
         
-       //get the board
         ChessPiece[][] board = chess.getBoard();
         
         ArrayList<ChessPiece> pieces = chess.getPieces();
@@ -40,9 +39,12 @@ public class ChessDriver
         printBoard(board);
         
         //chess.makeMove(0,4,1,4);
-        System.out.println(chess.makeMove(0, 4, 0, 0));
+        
+        System.out.print( chess.makeMove("e8 e7") );
+        System.out.println("(Move code)");
         
         //ChessPiece a = pieces.get(0);
+        //System.out.println( a.makeMove(0,0, 'x') );
         
         //System.out.print(a.getName() + "(" + a.getType() +") ");
         //System.out.print( Chess.getColorString(a.getColor()) );

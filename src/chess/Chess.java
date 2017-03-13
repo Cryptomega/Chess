@@ -35,7 +35,9 @@ public class Chess
     public static final int MOVE_ILLEGAL_IMPEDED        = 103;
     public static final int MOVE_ILLEGAL_SQUARE_EMPTY   = 104;
     public static final int MOVE_ILLEGAL_WRONG_PLAYER   = 105;
-    public static final int AMBIGUOUS_PROMOTION         = 110;
+    public static final int AMBIGUOUS_PROMOTION         = 120;
+    public static final int GAME_NOT_ACTIVE             = 121;
+    public static final int PIECE_NOT_ACTIVE            = 122;
     
         
     // Piece states
@@ -49,10 +51,10 @@ public class Chess
      * * * Game State variables * * *
      * ****************************************/
     private boolean mIsGameActive;
-    private boolean mIsWhitesTurn;
+    private int mWhoseTurn;
     private int mGameCounter;
-    private boolean mWhiteOffersDraw;
-    private boolean mBlackOffersDraw;
+    private boolean mWhiteOfferingDraw;
+    private boolean mBlackOfferingDraw;
     //private boolean mInEditMode = false;
     //private boolean mInAnalysisMode = false;
     //private boolean mIsChess960 = false;
@@ -97,7 +99,7 @@ public class Chess
     
     // true if game is active. Use startGame() to activate
     public boolean isGameActive() { return mIsGameActive; }
-    public boolean isWhitesTurn() { return mIsWhitesTurn; }
+    public int whoseTurn() { return mWhoseTurn; }
     
     /**
      * Get the chess board with references to the active pieces on it
@@ -129,11 +131,11 @@ public class Chess
     {
         // reset game variables
         mIsGameActive = false;
-        mWhiteOffersDraw = false;
-        mBlackOffersDraw = false;
+        mWhiteOfferingDraw = false;
+        mBlackOfferingDraw = false;
         mIsGameActive = false;  
         mGameCounter = 0;
-        mIsWhitesTurn = true;
+        mWhoseTurn = WHITE;
         
         // clear game board
         for (int i = 0; i < 8; i++)
@@ -186,13 +188,21 @@ public class Chess
     {
         if ( move.length() < 5 )
             throw new IllegalArgumentException("Invalid input string");
-        String from = move.substring(0, 1);
-        String to = move.substring(3, 4);
-        // TODO: convert string coords to internal coords
-        // TODO: check for promotion type
-        // TODO: call makeMove(int, int, int, int)
-        //       or makeMove(int, int, int, int, int)
-        return -1; 
+        String from = move.substring(0, 2);
+        String to = move.substring(3, 5);
+        int fromRank = Chess.convertAlgebraicToInternalRank(from);
+        int fromFile = Chess.convertAlgebraicToInternalFile(from);
+        int toRank = Chess.convertAlgebraicToInternalRank(to);
+        int toFile = Chess.convertAlgebraicToInternalFile(to);
+        
+        if ( move.length() >= 7)
+        {
+            char promoType = move.toUpperCase().charAt(6);
+            if ( promoType == QUEEN || promoType == ROOK
+                    || promoType == BISHOP || promoType == KNIGHT )
+                return makeMove(fromRank, fromFile, toRank, toFile, promoType);
+        }
+        return makeMove(fromRank, fromFile, toRank, toFile);        
     }
     
     
@@ -404,11 +414,11 @@ public class Chess
     {
         protected int mRank;
         protected int mFile;
-        protected String mPositionString = "";
+        //protected String mPositionString = "";
         protected char mType;
         protected int mColor;
         protected int mStatus;
-        protected boolean mIsActive;
+        protected boolean mIsActive = false;
         protected int mMoveCount = 0;
         
         /**
@@ -437,8 +447,10 @@ public class Chess
          */
         public int makeMove(int rank, int file, char promotionType)
         {
-            // TODO: Override in Pawn class to use promotionType param
+            // TODO: Override in Pawn class to handle promotions
             // Otherwise, just ignore promotionType
+            
+            //System.out.println("Promotion type: " + promotionType); // DEBUG
             return makeMove(rank, file);
         }
         
@@ -461,6 +473,12 @@ public class Chess
          *                otherwise returns error code
          */
         abstract public int validateMove(int rank, int file);
+        
+        
+        private void beingCaptured()
+        {
+            // TODO: implement
+        }
                 
         
         private void setPosition(String coord)
@@ -477,13 +495,15 @@ public class Chess
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
             mRank = rank;
             mFile = file;
-            mPositionString = convertInternalToAlgebraic(rank, file);
+            //mPositionString = convertInternalToAlgebraic(rank, file);
             mChessBoard[rank][file] = this;
+            mStatus = PIECE_ACTIVE;
+            mIsActive = true;
         }
         
         // public get methods
         public String getPosition()
-            { return mPositionString; } // TODO: make sure this is safe
+            { return Chess.convertInternalToAlgebraic(mRank, mFile); } 
         public int getPositionInternalRank() { return mRank; }
         public int getPositionInternalFile() { return mFile; }
         public char getType() { return mType; }
@@ -522,14 +542,39 @@ public class Chess
         @Override
         public int makeMove(int rank, int file) 
         {
-            // TODO: implement
+            // TODO: finish implementation
+            
+            // DEBUG printout
+            System.out.println("Executing ("
+                    + Chess.convertInternalToAlgebraic(mRank, mFile)
+                    + ") " + Chess.getName(mType) 
+                    + ".makeMove(" + rank + ", " + file + ")" );
+
+            
+            // check if game is active
+            if ( !mIsGameActive )
+                return GAME_NOT_ACTIVE;
+            
+            // check mColor
+            if ( mColor != mWhoseTurn )
+                return MOVE_ILLEGAL_WRONG_PLAYER;
+            
+            // validate move
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL ) return code;
             
-            // test code
-            System.out.println("Executing " 
-                + Chess.getName(mType) + ".makeMove("
-                + rank + ", " + file + ")" );
+            // check if target square is occupied.
+            // if so, capture that piece
+            
+            // set the new position
+            // update mChessBoard
+            
+            // add move to mChessHistory
+            
+            // increment mMoveCount
+            
+            // call endTurn() method
+            
             
             return code;            
         }

@@ -187,6 +187,7 @@ public class Chess
         if ( move.length() < 5 )
             throw new IllegalArgumentException("Invalid input string");
         String from = move.substring(0, 1);
+        String to = move.substring(3, 4);
         // TODO: convert string coords to internal coords
         // TODO: check for promotion type
         // TODO: call makeMove(int, int, int, int)
@@ -208,7 +209,7 @@ public class Chess
     {
         if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
-        // check if piece exist at "from" coord, 
+        // check if piece exist at "from" coord
         if ( mChessBoard[fromRank][fromFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
         else

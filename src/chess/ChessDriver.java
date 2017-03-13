@@ -40,7 +40,7 @@ public class ChessDriver
         printBoard(board);
         
         //chess.makeMove(0,4,1,4);
-        System.out.println(chess.makeMove(0, 4, 0, 0, 5));
+        System.out.println(chess.makeMove(0, 4, 0, 0));
         
         //ChessPiece a = pieces.get(0);
         

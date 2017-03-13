@@ -21,12 +21,12 @@ public class Chess
     public static final int WHITE =  1;
     
     // Piece types
-    public static final int KING =   2;
-    public static final int QUEEN =  3;
-    public static final int BISHOP = 4;
-    public static final int KNIGHT = 5;
-    public static final int ROOK =   6;
-    public static final int PAWN =   7;
+    public static final char KING =   'K';
+    public static final char QUEEN =  'Q';
+    public static final char BISHOP = 'B';
+    public static final char KNIGHT = 'N';
+    public static final char ROOK =   'R';
+    public static final char PAWN =   'P';
     
     // makeMove() and isValidMove() return codes
     public static final int MOVE_LEGAL                  = 100;
@@ -228,7 +228,7 @@ public class Chess
      * @return returns MOVE_LEGAL (100) if the move is accepted, 
      *         otherwise returns error code
      */
-    public int makeMove(int fromRank, int fromFile, int toRank, int toFile, int promotionType)
+    public int makeMove(int fromRank, int fromFile, int toRank, int toFile, char promotionType)
     {
         if ( !isValidCoord(fromRank, fromFile) || !isValidCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
@@ -250,7 +250,7 @@ public class Chess
     /**
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
      * */
-    private ChessPiece addPieceToGame(int color, int type)
+    private ChessPiece addPieceToGame(int color, char type)
     {
         if ( color != WHITE && color != BLACK )
             throw new IllegalArgumentException("Invalid color argument");
@@ -282,7 +282,7 @@ public class Chess
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
      * and places on board
      * */
-    private ChessPiece addPieceToGame(int color, int type, int rank, int file)
+    private ChessPiece addPieceToGame(int color, char type, int rank, int file)
     {
         if ( !isValidCoord(rank,file) )
             throw new IllegalArgumentException("Invalid coordinate argument");
@@ -327,7 +327,7 @@ public class Chess
         return (rank+file)%2; 
     }
     
-    public static char getUnicode(int color, int type)
+    public static char getUnicode(int color, char type)
     {
         if( color == WHITE && type == KING)
             return '\u2654'; // white king char
@@ -356,7 +356,7 @@ public class Chess
         return '?';
     }
     
-    public static String getName(int type)
+    public static String getName(char type)
     {
         switch (type) {
             case KING:
@@ -405,7 +405,7 @@ public class Chess
         protected int mRank;
         protected int mFile;
         protected String mPositionString = "";
-        protected int mType;
+        protected char mType;
         protected int mColor;
         protected int mStatus;
         protected boolean mIsActive;
@@ -435,7 +435,7 @@ public class Chess
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int file, int promotionType)
+        public int makeMove(int rank, int file, char promotionType)
         {
             // TODO: Override in Pawn class to use promotionType param
             // Otherwise, just ignore promotionType
@@ -486,7 +486,7 @@ public class Chess
             { return mPositionString; } // TODO: make sure this is safe
         public int getPositionInternalRank() { return mRank; }
         public int getPositionInternalFile() { return mFile; }
-        public int getType() { return mType; }
+        public char getType() { return mType; }
         public int getColor() { return mColor; }
         public int getStatus() { return mStatus; }
         public int getMoveCount() { return mMoveCount; }

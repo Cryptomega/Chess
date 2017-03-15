@@ -51,9 +51,10 @@ public class ChessDriver
             }
             
             //System.out.println("\n");
-            System.out.println(code + ":" + Chess.getMoveCodeText(code));
+            System.out.println(code + ":" + Chess.getMoveCodeText(code)
+                            + " Move number: " + chess.getMoveNumber());
             
-            break; // DEBUG            
+            //break; // DEBUG            
         }
 
         //ArrayList<ChessPiece> pieces = chess.getPieces();

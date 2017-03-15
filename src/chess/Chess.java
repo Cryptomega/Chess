@@ -41,6 +41,7 @@ public class Chess
     public static final int AMBIGUOUS_PROMOTION               = 120;
     public static final int GAME_NOT_ACTIVE                   = 121;
     public static final int PIECE_NOT_ACTIVE                  = 122;
+    public static final int PIECE_IS_OBSERVING                = 199;
     
         
     // Piece states
@@ -288,13 +289,14 @@ public class Chess
      */
     public boolean isInCheck(int color, int rank, int file)
     {
+        
         for ( ChessPiece piece : mChessPieces )
         {
-            // skip if color matches kings color
-            if ( piece.getColor() == color )
+            // skip if color matches kings color, or if inactive
+            if ( !piece.mIsActive || piece.getColor() == color )
                 continue;
             
-            if ( piece.isObserving(rank, file) )
+            if ( piece.isObserving(rank, file) == PIECE_IS_OBSERVING )
                 return true;
         }
         return false;
@@ -647,7 +649,7 @@ public class Chess
             * @param file value from 0-7
             * @return true or false
             */
-        abstract protected boolean isObserving(int rank, int file);
+        abstract protected int isObserving(int rank, int file);
         
         // public get methods
         public String getPosition()
@@ -684,6 +686,7 @@ public class Chess
         {
             // TODO: implement
             
+            // TODO: implement castling
             // is player trying to castle? if yes:
             //      cannot castle out of check
             //      cannot castle through or into check
@@ -693,16 +696,40 @@ public class Chess
             
             // if not castling:
             
-            // king must be ovserving the square
-            if ( ! isObserving(rank,file) )
-                return MOVE_ILLEGAL;
+            // piece must be observing the square
+            int isObservingCode = isObserving(rank,file);
+            if ( isObservingCode != PIECE_IS_OBSERVING )
+                return isObservingCode;
             
             // square cannot be occupied by own piece
             if ( mChessBoard[rank][file] != null
                     && mChessBoard[rank][file].getColor() == mColor )
                 return MOVE_ILLEGAL_SQUARE_OCCUPIED;
             
-            // cannot move into check
+            // cannot move into check:
+            //      (1)update moving piece position, remove catpured piece if any
+            //      (2)call isInCheck(mColor)
+            //      (3)undo moving piece, undo removing captured piece
+            
+            int fromRank = getPositionInternalRank();  // save current rank
+            int fromFile = getPositionInternalFile();  // and file
+            
+            // get piece to be captured, if any
+            ChessPiece captured = mChessBoard[rank][file];
+            if ( captured != null )
+                captured.mIsActive = false;     // temporarily deactivate
+            updatePosition(rank,file);   // temporarily move the piece
+            
+            boolean isInCheck = isInCheck(mColor);
+            
+            // undo temporary move
+            updatePosition(fromRank, fromFile);
+            mChessBoard[rank][file] = captured;
+            if ( captured != null )
+                captured.mIsActive = true;
+            
+            if ( isInCheck )
+                return MOVE_ILLEGAL_KING_IN_CHECK;
             
             return MOVE_LEGAL; // returns valid for now
         }
@@ -744,6 +771,10 @@ public class Chess
             if ( !mIsGameActive )
                 return GAME_NOT_ACTIVE;
             
+            // make sure piece is active
+            if ( !mIsActive )
+                return PIECE_NOT_ACTIVE;
+            
             // check mColor
             if ( mColor != mWhoseTurn )
                 return MOVE_ILLEGAL_WRONG_PLAYER;
@@ -764,13 +795,14 @@ public class Chess
             
             // if we de-abstract this function, add a call to
             // makeMoveSpecialInstructions(int rank, int file, char promotionType)
+            // to handle pawn promotions and castling
             
             // check if we are checking the enemy
             // check if we are checkmating
             // check if it a stalemate or draw
             // int gameStateCode = checkGameState();
             
-            // add move to mChessHistory
+            // add move to mChessHistory (pass the previous coordinates)
             
             
             
@@ -783,15 +815,19 @@ public class Chess
             
                        
             
-            return code;            
+            return code;
         }
 
         @Override
-        protected boolean isObserving(int rank, int file) 
+        protected int isObserving(int rank, int file) 
         {
-            return ( Math.abs(mRank - rank) <= 1 ) 
+            if ( ( Math.abs(mRank - rank) <= 1 ) 
                     && ( Math.abs(mFile - file) <= 1 )
-                    && (rank != mRank || file != mFile);
+                    && (rank != mRank || file != mFile) )
+                return PIECE_IS_OBSERVING;
+            else
+                return MOVE_ILLEGAL;
+                   
         }
     }
     

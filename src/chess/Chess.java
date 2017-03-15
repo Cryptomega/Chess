@@ -272,11 +272,31 @@ public class Chess
      */
     public boolean isInCheck(int color)
     {
-        // get king index
-        int kingIndex = getKingIndex(color);
-        
-                
+        // get the king
+        ChessPiece king = getKing(color);
+        int kingRank = king.getPositionInternalRank();
+        int kingFile = king.getPositionInternalFile();
+        return isInCheck(color, kingRank, kingFile);
+    }
+    
+    /**
+     * Check to see if king would be in check at a coordinate
+     * @param color color of king to examine
+     * @param rank rank of square to examine
+     * @param file file of square to examine
+     * @return true if in check, false if not
+     */
+    public boolean isInCheck(int color, int rank, int file)
+    {
+        for ( ChessPiece piece : mChessPieces )
+        {
+            // skip if color matches kings color
+            if ( piece.getColor() == color )
+                continue;
             
+            if ( piece.isObserving(rank, file) )
+                return true;
+        }
         return false;
     }
     
@@ -693,6 +713,26 @@ public class Chess
         {
             // TODO: finish implementation
             
+            /*
+            //DEBUG 
+            System.out.print(getName() + " is observing: ");
+            for (int i =0; i < 8; i++ )
+                for (int j =0; j < 8; j++ )
+                    if ( isObserving(i,j) )
+                        System.out.print(
+                                Chess.convertInternalToAlgebraic(i, j)
+                            + ", ");
+            System.out.println("");
+            // END DEBUG
+            
+            // DEBUG
+            for (int i =0; i < 8; i++ )
+                for (int j =0; j < 8; j++ )
+                    if (isInCheck(mColor,i,j) )
+                        System.out.println(Chess.convertInternalToAlgebraic(i, j) + " is in check.");
+            // END DEBUG
+            */
+            
             // DEBUG printout
             System.out.println("Executing ("
                     + getPosition()
@@ -714,18 +754,7 @@ public class Chess
             
             // switch timer
             
-            /*
-            //DEBUG 
-            System.out.print(getName() + " is observing: ");
-            for (int i =0; i < 8; i++ )
-                for (int j =0; j < 8; j++ )
-                    if ( isObserving(i,j) )
-                        System.out.print(
-                                Chess.convertInternalToAlgebraic(i, j)
-                            + ", ");
-            System.out.println("");
-            // END DEBUG
-            */
+            
 
             // check if a piece is captured
             // if so, capture that piece
@@ -751,6 +780,8 @@ public class Chess
             
             // switch turn to other player
             mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+            
+                       
             
             return code;            
         }

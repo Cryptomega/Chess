@@ -273,8 +273,9 @@ public class Chess
     public boolean isInCheck(int color)
     {
         // get king index
+        int kingIndex = getKingIndex(color);
         
-        
+                
             
         return false;
     }
@@ -335,6 +336,14 @@ public class Chess
         //    return null;
         newPiece.setPosition(rank, file);
         return newPiece;
+    }
+    
+    private ChessPiece getKing(int color)
+    {
+        int index = getKingIndex(color);
+        if (index == -1)
+            throw new IllegalStateException("King not found!");
+        return mChessPieces.get(index);
     }
     
     private int getKingIndex(int color)

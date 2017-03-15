@@ -1,11 +1,11 @@
 /*
  *
  */
-package chess;
+package io.github.cryptomega.chess;
 
-import chess.Chess.ChessPiece;
-import java.util.ArrayList;
-import java.util.Arrays;
+import io.github.cryptomega.chess.Chess.ChessPiece;
+//import java.util.ArrayList;
+//import java.util.Arrays;
 import java.util.Scanner;
 
 
@@ -26,7 +26,7 @@ public class ChessDriver
         chess.startGame();
         
         // input string variable
-        String input = "";
+        String input;
         Scanner scanner = new Scanner(System.in);
         
         // game loop
@@ -54,10 +54,9 @@ public class ChessDriver
             System.out.println(code + ":" + Chess.getMoveCodeText(code)
                             + " Move number: " + chess.getMoveNumber());
             
-            //break; // DEBUG            
+            //break; // DEBUG
         }
 
-        //ArrayList<ChessPiece> pieces = chess.getPieces();
 
     }
 

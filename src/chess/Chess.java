@@ -63,6 +63,9 @@ public class Chess
     //private boolean mInAnalysisMode = false;
     //private boolean mIsChess960 = false;
     
+    private int mWhiteKingIndex = -1;
+    private int mBlackKingIndex = -1;
+    
     
     /************************************************
      * The Chess Board -  This board using an internal
@@ -141,6 +144,8 @@ public class Chess
         mIsGameActive = false;  
         mTurnCount = 0;
         mWhoseTurn = WHITE;
+        mWhiteKingIndex = -1;
+        mBlackKingIndex = -1;
         
         // clear game board
         for (int i = 0; i < 8; i++)
@@ -170,9 +175,9 @@ public class Chess
         //TODO: Create pieces and place on board
 
         addPieceToGame(WHITE, KING, 0, 4 );
-        addPieceToGame(WHITE, KING, 0, 3 );
+        //addPieceToGame(WHITE, KING, 0, 3 );
         addPieceToGame(BLACK, KING, 7, 4 );
-        addPieceToGame(BLACK, KING, 7, 3 );
+        //addPieceToGame(BLACK, KING, 7, 3 );
 
     }
     
@@ -260,6 +265,20 @@ public class Chess
             return mChessBoard[fromRank][fromFile].makeMove(toRank, toFile, promotionType);
     }
     
+    /**
+     * Check to see if king is in check
+     * @param color color of king to examine
+     * @return true if in check, false if not
+     */
+    public boolean isInCheck(int color)
+    {
+        // get king index
+        
+        
+            
+        return false;
+    }
+    
     
     // TODO: add validateMove(int,int,int,int) and/or (string) maybe?
     
@@ -316,6 +335,26 @@ public class Chess
         //    return null;
         newPiece.setPosition(rank, file);
         return newPiece;
+    }
+    
+    private int getKingIndex(int color)
+    {
+        int kingIndex = (color == WHITE) ? mWhiteKingIndex : mBlackKingIndex;
+        if ( kingIndex != -1 ) // TODO: check that is actually the king??? seems unnessicary
+            return kingIndex;
+        
+        
+        for (int i = 0; i < mChessPieces.size(); i++ )
+            if ( mChessPieces.get(i).getType() == KING
+                    && mChessPieces.get(i).getColor() == color )
+            {
+                if ( color == WHITE)
+                    mWhiteKingIndex = i;
+                else
+                    mBlackKingIndex = i;
+                return i;
+            }
+        return -1;
     }
     
     
@@ -461,11 +500,19 @@ public class Chess
     {
         protected int mRank, mFile;
         //protected String mPositionString = "";
-        protected char mType;
-        protected int mColor;
+        protected final char mType;
+        protected final int mColor;
         protected int mStatus = PIECE_NOT_PLACED;
         protected boolean mIsActive = false;
         protected int mMoveCount = 0;
+        
+        protected ChessPiece(int color, char type)
+        {
+            if ( color != WHITE && color != BLACK ) // validate color 
+                throw new IllegalArgumentException("Invalid color.");
+            mColor = color;
+            mType = type;
+        }
         
         /**
          * Makes a move given the algebraic coordinate of target square
@@ -600,8 +647,7 @@ public class Chess
         // Constructor
         private King(int color)
         {
-            mColor = color;
-            mType = KING;
+            super(color, KING);
         }
 
         @Override
@@ -657,6 +703,8 @@ public class Chess
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL ) return code;
             
+            // switch timer
+            
             /*
             //DEBUG 
             System.out.print(getName() + " is observing: ");
@@ -675,6 +723,9 @@ public class Chess
             
             // set the new position and update mChessBoard
             updatePosition(rank, file);
+            
+            // if we de-abstract this function, add a call to
+            // makeMoveSpecialInstructions(int rank, int file, char promotionType)
             
             // check if we are checking the enemy
             // check if we are checkmating

@@ -586,7 +586,81 @@ public class Chess
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        abstract public int makeMove(int rank, int file);
+        public int makeMove(int rank, int file)
+        {
+            // TODO: finish implementation
+            
+            /*
+            //DEBUG 
+            System.out.print(getName() + " is observing: ");
+            for (int i =0; i < 8; i++ )
+                for (int j =0; j < 8; j++ )
+                    if ( isObserving(i,j) )
+                        System.out.print(
+                                Chess.convertInternalToAlgebraic(i, j)
+                            + ", ");
+            System.out.println("");
+            // END DEBUG
+            
+            // DEBUG
+            for (int i =0; i < 8; i++ )
+                for (int j =0; j < 8; j++ )
+                    if (isInCheck(mColor,i,j) )
+                        System.out.println(Chess.convertInternalToAlgebraic(i, j) + " is in check.");
+            // END DEBUG
+            */
+            
+            // DEBUG printout
+            System.out.println("Executing ("
+                    + getPosition()
+                    + ") " + Chess.getName(mType) 
+                    + ".makeMove(" + rank + ", " + file + ")" );
+            // END DEBUG
+            
+            // check if game is active
+            if ( !mIsGameActive )
+                return GAME_NOT_ACTIVE;
+            
+            // make sure piece is active
+            if ( !mIsActive )
+                return PIECE_NOT_ACTIVE;
+            
+            // check mColor
+            if ( mColor != mWhoseTurn )
+                return MOVE_ILLEGAL_WRONG_PLAYER;
+            
+            // validate move
+            int code = validateMove(rank, file);
+            if ( code != MOVE_LEGAL ) return code;
+            
+            // switch timer
+            
+            
+
+            // check if a piece is captured
+            // if so, capture that piece
+            
+            // set the new position and update mChessBoard
+            updatePosition(rank, file);
+            
+            // if we de-abstract this function, override this function
+            // for king and pawn class to handle pawn promotions and castling
+            // right here
+            
+            // check if we are checks, checkmate, stalemate or draw
+            // int gameStateCode = checkGameState();
+            
+            // add move to mChessHistory (pass the previous coordinates)
+
+            // increment mTurnCount and mMoveCount
+            mTurnCount++;
+            mMoveCount++;
+            
+            // switch turn to other player
+            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+ 
+            return code;
+        }
         
         
         /**
@@ -596,7 +670,47 @@ public class Chess
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        abstract public int validateMove(int rank, int file);
+        public int validateMove(int rank, int file)
+        {    
+            // if not castling:
+            
+            // piece must be observing the square
+            int isObservingCode = isObserving(rank,file);
+            if ( isObservingCode != PIECE_IS_OBSERVING )
+                return isObservingCode;
+            
+            // square cannot be occupied by own piece
+            if ( mChessBoard[rank][file] != null
+                    && mChessBoard[rank][file].getColor() == mColor )
+                return MOVE_ILLEGAL_SQUARE_OCCUPIED;
+            
+            // cannot move into check:
+            //      (1)update moving piece position, remove catpured piece if any
+            //      (2)call isInCheck(mColor)
+            //      (3)undo moving piece, undo removing captured piece
+            
+            int fromRank = getPositionInternalRank();  // save current rank
+            int fromFile = getPositionInternalFile();  // and file
+            
+            // (1) get piece to be captured, if any
+            ChessPiece captured = mChessBoard[rank][file];
+            if ( captured != null )
+                captured.mIsActive = false;     // temporarily deactivate
+            updatePosition(rank,file);   // (1)temporarily move the piece
+            
+            boolean isInCheck = isInCheck(mColor);  // (2)
+            
+            // undo temporary move (3)
+            updatePosition(fromRank, fromFile);
+            mChessBoard[rank][file] = captured;
+            if ( captured != null )
+                captured.mIsActive = true;
+            
+            if ( isInCheck )
+                return MOVE_ILLEGAL_KING_IN_CHECK;
+            
+            return MOVE_LEGAL; // returns valid for now
+        }
         
         
         protected void captured()
@@ -681,140 +795,21 @@ public class Chess
             super(color, KING);
         }
 
-        @Override
-        public int validateMove(int rank, int file) 
-        {
+        //@Override
+        //public int validateMove(int rank, int file) 
+        
             // TODO: implement
             
-            // TODO: implement castling
+            // TODO: override in King to implement castling
             // is player trying to castle? if yes:
             //      cannot castle out of check
             //      cannot castle through or into check
             //      king and rook cannot have moved
             //      cannot be impeded
-            
-            
-            // if not castling:
-            
-            // piece must be observing the square
-            int isObservingCode = isObserving(rank,file);
-            if ( isObservingCode != PIECE_IS_OBSERVING )
-                return isObservingCode;
-            
-            // square cannot be occupied by own piece
-            if ( mChessBoard[rank][file] != null
-                    && mChessBoard[rank][file].getColor() == mColor )
-                return MOVE_ILLEGAL_SQUARE_OCCUPIED;
-            
-            // cannot move into check:
-            //      (1)update moving piece position, remove catpured piece if any
-            //      (2)call isInCheck(mColor)
-            //      (3)undo moving piece, undo removing captured piece
-            
-            int fromRank = getPositionInternalRank();  // save current rank
-            int fromFile = getPositionInternalFile();  // and file
-            
-            // get piece to be captured, if any
-            ChessPiece captured = mChessBoard[rank][file];
-            if ( captured != null )
-                captured.mIsActive = false;     // temporarily deactivate
-            updatePosition(rank,file);   // temporarily move the piece
-            
-            boolean isInCheck = isInCheck(mColor);
-            
-            // undo temporary move
-            updatePosition(fromRank, fromFile);
-            mChessBoard[rank][file] = captured;
-            if ( captured != null )
-                captured.mIsActive = true;
-            
-            if ( isInCheck )
-                return MOVE_ILLEGAL_KING_IN_CHECK;
-            
-            return MOVE_LEGAL; // returns valid for now
-        }
+        
 
-        // TODO: consider moving into ChessPiece parent class
-        @Override
-        public int makeMove(int rank, int file) 
-        {
-            // TODO: finish implementation
-            
-            /*
-            //DEBUG 
-            System.out.print(getName() + " is observing: ");
-            for (int i =0; i < 8; i++ )
-                for (int j =0; j < 8; j++ )
-                    if ( isObserving(i,j) )
-                        System.out.print(
-                                Chess.convertInternalToAlgebraic(i, j)
-                            + ", ");
-            System.out.println("");
-            // END DEBUG
-            
-            // DEBUG
-            for (int i =0; i < 8; i++ )
-                for (int j =0; j < 8; j++ )
-                    if (isInCheck(mColor,i,j) )
-                        System.out.println(Chess.convertInternalToAlgebraic(i, j) + " is in check.");
-            // END DEBUG
-            */
-            
-            // DEBUG printout
-            System.out.println("Executing ("
-                    + getPosition()
-                    + ") " + Chess.getName(mType) 
-                    + ".makeMove(" + rank + ", " + file + ")" );
-            // END DEBUG
-            
-            // check if game is active
-            if ( !mIsGameActive )
-                return GAME_NOT_ACTIVE;
-            
-            // make sure piece is active
-            if ( !mIsActive )
-                return PIECE_NOT_ACTIVE;
-            
-            // check mColor
-            if ( mColor != mWhoseTurn )
-                return MOVE_ILLEGAL_WRONG_PLAYER;
-            
-            // validate move
-            int code = validateMove(rank, file);
-            if ( code != MOVE_LEGAL ) return code;
-            
-            // switch timer
-            
-            
-
-            // check if a piece is captured
-            // if so, capture that piece
-            
-            // set the new position and update mChessBoard
-            updatePosition(rank, file);
-            
-            // if we de-abstract this function, override this function
-            // for king and pawn class to handle pawn promotions and castling
-            // right here
-            
-            // check if we are checks, checkmate, stalemate or draw
-            // int gameStateCode = checkGameState();
-            
-            // add move to mChessHistory (pass the previous coordinates)
-            
-            
-            
-            // increment mTurnCount and mMoveCount
-            mTurnCount++;
-            mMoveCount++;
-            
-            // switch turn to other player
-            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
-            
-                       
-            
-            return code;
-        }
+        //@Override
+        //public int makeMove(int rank, int file) 
 
         @Override
         protected int isObserving(int rank, int file) 

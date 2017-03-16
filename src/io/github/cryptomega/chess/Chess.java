@@ -600,7 +600,7 @@ public class Chess
         
         
         /**
-         * MAKES THE MOVE! after validating the move by calling validateMove()
+         * MAKES THE MOVE! after validating the move by calling validateMove
          * @param rank value from 0-7
          * @param file value from 0-7
          * @return MOVE_LEGAL (100) if its a good move, 
@@ -609,8 +609,7 @@ public class Chess
         public int makeMove(int rank, int file)
         {
             // TODO: finish implementation
-            
-            
+
             //DEBUG 
             /*
             System.out.print(getName() + " is observing: ");
@@ -676,7 +675,7 @@ public class Chess
             // check if we are checks, checkmate, stalemate or draw
             // int gameStateCode = checkGameState();
             
-            // add move to mChessHistory (pass the previous coordinates)
+            // add move to mChessHistory (pass coordinates of previous square)
 
             // increment mTurnCount and mMoveCount
             mTurnCount++;
@@ -697,7 +696,7 @@ public class Chess
          *                otherwise returns error code
          */
         public int validateMove(int rank, int file)
-        {    
+        {
             // if not castling:
             
             // piece must be observing the square
@@ -989,15 +988,33 @@ public class Chess
         @Override
         public int isObserving(int rank, int file)
         {
-            if ( mRank == rank && mFile == file )  // already occupying square
-                 return MOVE_ILLEGAL;
-            if ( ( abs(mRank - rank) == 2 && abs(mFile - file) == 1 ) ||
-                 ( abs(mRank - rank) == 1 && abs(mFile - file) == 2  )  )
+            //if ( mRank == rank && mFile == file )  // already occupying square
+            //     return MOVE_ILLEGAL;
+            int absRankDif = abs(mRank - rank);
+            int absFileDif = abs(mFile - file);
+            if ( ( absRankDif == 2 && absFileDif == 1 ) ||
+                 ( absRankDif == 1 && absFileDif == 2  )  )
                 return PIECE_IS_OBSERVING;
             return MOVE_ILLEGAL;
                     
         }
     }
+    
+    /**
+     * Pawn class
+     */
+    private class Pawn extends ChessPiece
+    {
+        private Pawn(int color)
+        { super(color, PAWN); }
+
+        @Override
+        public int isObserving(int rank, int file)
+        {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+    }
+            
     
     // TODO: Implement all the pieces!!!!
     

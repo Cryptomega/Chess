@@ -51,6 +51,13 @@ public class Chess
     public static final int PIECE_PROMOTED      = 202;
     public static final int PIECE_NOT_PLACED    = 203;
     
+    // Player states
+    public static final int PLAYER_OK           = 900;
+    public static final int PLAYER_IN_CHECK     = 901;
+    public static final int PLAYER_IN_CHECKMATE = 902;
+    public static final int PLAYER_IN_STALEMATE = 903;
+    public static final int PLAYER_CLAIMS_DRAW  = 904;
+    
     
     /* ****************************************
      * * * Game State variables * * *
@@ -130,7 +137,7 @@ public class Chess
     public ArrayList<ChessPiece> getPieces()
         { return (ArrayList<ChessPiece>) mChessPieces.clone(); }
     
-    //public void restartGame() {}
+    //public void restartGame() {}  // TODO: implement? might not be useful
     
     /**
      * Initializes the game board (mChessBoard) to all null values 
@@ -319,6 +326,22 @@ public class Chess
         return false;
     }
     
+    public int checkPlayerState(int color)
+    {
+        // TODO: impement
+        // check for check, checkmate, stalemate, or draw
+        
+        /*
+        return codes:
+        PLAYER_OK
+        PLAYER_IN_CHECK
+        PLAYER_IN_CHECKMATE
+        PLAYER_IN_STALEMATE
+        PLAYER_CLAIMS_DRAW
+        */
+        return PLAYER_OK;
+    }
+    
     
     // TODO: add validateMove(int,int,int,int) and/or (string) maybe?
     
@@ -408,6 +431,11 @@ public class Chess
                 return i;
             }
         return -1;
+    }
+    
+    public String getCompleteMoveHistory()
+    {
+        return "";
     }
     
     
@@ -667,6 +695,10 @@ public class Chess
             if ( captured != null )
                 captured.captured();
             
+            // hold onto last location
+            int fromRank = mRank;
+            int fromFile = mFile;
+            
             // set the new position and update mChessBoard
             updatePosition(rank, file);
             
@@ -674,10 +706,18 @@ public class Chess
             // for king and pawn class to handle pawn promotions and castling
             // right here
             
-            // check if we are checks, checkmate, stalemate or draw
-            // int gameStateCode = checkGameState();
+            // check for checks, checkmate, stalemate or draw
+            int opponentColor = ( mColor == WHITE ) ? BLACK : WHITE;
+            int playerStateCode = checkPlayerState(opponentColor);
+            boolean check = playerStateCode == PLAYER_IN_CHECK;
+            boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            
             
             // add move to mChessHistory (pass coordinates of previous square)
+            mChessHistory.add(new RecordOfMove(
+                    this, fromRank, fromFile,
+                    captured, null, 
+                    check, checkmate        ) );
             
             
             // increment mTurnCount and mMoveCount

@@ -678,7 +678,8 @@ public class Chess
             // int gameStateCode = checkGameState();
             
             // add move to mChessHistory (pass coordinates of previous square)
-
+            
+            
             // increment mTurnCount and mMoveCount
             mTurnCount++;
             mMoveCount++;
@@ -1030,28 +1031,34 @@ public class Chess
      *********************************************************/
     private class RecordOfMove
     {
-        final int moveNumber;
-        final String movePrefix; // "1. " or "1... "
-        final String moveText;   // Readable move notation
+        final public int moveNumber;
+        final public String movePrefix; // "1. " or "1... "
+        final public String moveText;   // Readable move notation
         
         // The piece moved. required
-        final ChessPiece PieceMoved;
-        final int fromRank, fromFile;
-        final int toRank, toFile;
+        final public ChessPiece PieceMoved;
+        final public int fromRank, fromFile;
+        final public int toRank, toFile;
         
         // Captured piece. null if nothing captured
-        final ChessPiece PieceCaptured;
-        final int capturedRank, capturedFile;
+        final public ChessPiece PieceCaptured;
+        final public int capturedRank, capturedFile;
                 
         // Piece promoted to. null if no promotion
-        final ChessPiece PiecePromoted;
-        final char promotionType;
+        final public ChessPiece PiecePromoted;
+        final public char promotionType;
         
         
         // Rook castled with. null if player didn't castle
-        final ChessPiece RookCastled;
-        final int fromRookRank, fromRookFile;
+        final public ChessPiece RookCastled;
+        final public int fromRookRank, fromRookFile;
         
+        /**
+         * Gets a notational representation of the move
+         * @return example: "1... e7 e5"
+         */
+        public String getMoveText()
+        { return movePrefix + moveText; }
 
         /**
          * Call after piece has moved and its position updated, before 

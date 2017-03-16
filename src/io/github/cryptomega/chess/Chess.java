@@ -1113,6 +1113,19 @@ public class Chess
             moveText = sb.toString();
         }
         
+
+        /**
+         * Call after piece has moved and its position updated, before 
+         * turn count has been incremented. Constructor for castling
+         * @param moved reference to piece which has moved
+         * @param movedFromRank rank the piece moved from
+         * @param movedFromFile file the piece moved from
+         * @param castledRook reference to rook making the castle move
+         * @param fromRookRank rank of castling rook
+         * @param fromRookFile file of castling rook
+         * @param check true opponent is being checked
+         * @param checkmate true if opponent is being mated
+         */
         public RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
                 ChessPiece castledRook, int fromRookRank, int fromRookFile,
                 boolean check, boolean checkmate)
@@ -1124,6 +1137,8 @@ public class Chess
             toFile = PieceMoved.getPositionInternalFile();
 
             RookCastled = castledRook;
+            if ( RookCastled == null )
+                throw new IllegalArgumentException("Called wrong RecordOfMove constructor");
             this.fromRookRank = fromRookRank;
             this.fromRookFile = fromRookFile;
             

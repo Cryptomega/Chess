@@ -435,7 +435,20 @@ public class Chess
     
     public String getCompleteMoveHistory()
     {
-        return "";
+        String history = "";
+        boolean whitesTurn = true;
+        for ( RecordOfMove item : mChessHistory )
+        {
+            if ( whitesTurn )
+                history += item.movePrefix;
+            history += item.moveText;
+            if ( whitesTurn )
+                history += " ";
+            else
+                history += "\n";
+            whitesTurn = !whitesTurn;
+        }
+        return history;
     }
     
     
@@ -663,11 +676,13 @@ public class Chess
             */
             
             // DEBUG printout
+            /*
             System.out.println("Executing ("
                     + getPosition()
                     + ") " + Chess.getName(mType) 
                     + " makeMove to " +
                     Chess.convertInternalToAlgebraic(rank, file));
+            */
             // END DEBUG
             
             // check if game is active
@@ -1115,7 +1130,6 @@ public class Chess
                 ChessPiece captured, ChessPiece promo, 
                 boolean check, boolean checkmate)
         {
-            
             PieceMoved = moved;
             fromRank = movedFromRank;
             fromFile = movedFromFile;
@@ -1150,10 +1164,12 @@ public class Chess
             
             // construct move string
             StringBuilder sb = new StringBuilder();
-            if ( PieceMoved.getType() != PAWN )
+            if ( PieceMoved.getType() == PAWN )
+                sb.append(" ");
+            else
                 sb.append(PieceMoved.getType());
             sb.append(Chess.convertInternalToAlgebraic(fromRank, fromFile))
-            .append( (PieceCaptured == null) ? " " : "x" )
+            .append( (PieceCaptured == null) ? "-" : "x" )
             .append(Chess.convertInternalToAlgebraic(toRank, toFile))
             .append( (PiecePromoted == null) ? "" : "=" + promotionType )
             .append( checkmate ? "#" : check ? "+" : "");

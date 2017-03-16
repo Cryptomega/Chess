@@ -177,10 +177,13 @@ public class Chess
         //TODO: Create pieces and place on board
 
         addPieceToGame(WHITE, KING, 0, 4 );
-        addPieceToGame(BLACK, KING, 7, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
-        addPieceToGame(BLACK, QUEEN, 7, 3 );
+        addPieceToGame(WHITE, BISHOP, 0, 2 );
         addPieceToGame(WHITE, ROOK, 0, 0 );
+        
+        
+        addPieceToGame(BLACK, KING, 7, 4 );
+        addPieceToGame(BLACK, QUEEN, 7, 3 );
         addPieceToGame(BLACK, ROOK, 7, 0 );
         
 
@@ -333,7 +336,8 @@ public class Chess
                 newPiece = new Queen(color);
                 break;
             case BISHOP:
-                throw new UnsupportedOperationException("Bishop not yet implemented.");
+                newPiece = new Bishop(color);
+                break;
             case KNIGHT:
                 throw new UnsupportedOperationException("Knight not yet implemented.");
             case ROOK:
@@ -931,8 +935,39 @@ public class Chess
             }
             return MOVE_ILLEGAL;
         }
-        
     }
+    
+    /**
+     * Bishop class
+     */
+    private class Bishop extends ChessPiece
+    {
+        private Bishop(int color)
+        { super(color, BISHOP); }
+
+        @Override
+        public int isObserving(int rank, int file)
+        {
+            if ( mRank == rank && mFile == file )  // already occupying square
+                 return MOVE_ILLEGAL;
+            else if ( abs((double)(rank - mRank) / (double)(file - mFile) ) == 1.0 ) {  // check diagonalS
+                int d = mFile - file;   // difference
+                int s = Integer.signum(file - mFile);   // sign
+                int sl = (int)((double)(rank - mRank) / (double)(file - mFile)) ;  // slope
+                //System.out.println("isObserving on diagonal, slope is " + sl);
+                for (int i = 1; abs(d+i*s) > 0; i++)
+                {
+                    // look at square (mRank + s*i), (mFile + s*i)
+                    //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+sl*s*i, mFile+s*i)); // DEBUG
+                    if( mChessBoard[mRank+sl*s*i][mFile+s*i] != null )
+                        return MOVE_ILLEGAL_IMPEDED;
+                }
+                return PIECE_IS_OBSERVING; 
+            }
+            return MOVE_ILLEGAL;
+        }
+    }
+    
     // TODO: Implement all the pieces!!!!
     
 

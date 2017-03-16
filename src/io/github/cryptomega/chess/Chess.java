@@ -3,6 +3,7 @@
  */
 package io.github.cryptomega.chess;
 
+import static java.lang.Math.abs;
 import java.util.ArrayList;
 
 /**
@@ -176,9 +177,10 @@ public class Chess
         //TODO: Create pieces and place on board
 
         addPieceToGame(WHITE, KING, 0, 4 );
-        //addPieceToGame(WHITE, KING, 0, 3 );
         addPieceToGame(BLACK, KING, 7, 4 );
-        //addPieceToGame(BLACK, KING, 7, 3 );
+        addPieceToGame(WHITE, QUEEN, 0, 3 );
+        addPieceToGame(BLACK, QUEEN, 7, 3 );
+        
 
     }
     
@@ -326,7 +328,8 @@ public class Chess
                 newPiece = new King(color);
                 break;
             case QUEEN:
-                throw new UnsupportedOperationException("Queen not yet implemented.");
+                newPiece = new Queen(color);
+                break;
             case BISHOP:
                 throw new UnsupportedOperationException("Bishop not yet implemented.");
             case KNIGHT:
@@ -590,18 +593,21 @@ public class Chess
         {
             // TODO: finish implementation
             
-            /*
+            
             //DEBUG 
+            /*
             System.out.print(getName() + " is observing: ");
             for (int i =0; i < 8; i++ )
                 for (int j =0; j < 8; j++ )
-                    if ( isObserving(i,j) )
+                    if ( isObserving(i,j) == MOVE_LEGAL )
                         System.out.print(
                                 Chess.convertInternalToAlgebraic(i, j)
                             + ", ");
             System.out.println("");
+            */
             // END DEBUG
             
+            /*
             // DEBUG
             for (int i =0; i < 8; i++ )
                 for (int j =0; j < 8; j++ )
@@ -636,9 +642,11 @@ public class Chess
             // switch timer
             
             
-
-            // check if a piece is captured
-            // if so, capture that piece
+             // TODO: for pawn, implement en passant differently
+            // capture piece, if any
+            ChessPiece captured = mChessBoard[rank][file];
+            if ( captured != null )
+                captured.captured();
             
             // set the new position and update mChessBoard
             updatePosition(rank, file);
@@ -715,7 +723,9 @@ public class Chess
         
         protected void captured()
         {
-            // TODO: implement
+            mIsActive = false;
+            mStatus = PIECE_CAPTURED;
+            mChessBoard[mRank][mFile] = null;
         }
                 
         
@@ -763,7 +773,7 @@ public class Chess
             * @param file value from 0-7
             * @return true or false
             */
-        abstract protected int isObserving(int rank, int file);
+        abstract public int isObserving(int rank, int file);
         
         // public get methods
         public String getPosition()
@@ -791,9 +801,7 @@ public class Chess
     {
         // Constructor
         private King(int color)
-        {
-            super(color, KING);
-        }
+        { super(color, KING); }
 
         //@Override
         //public int validateMove(int rank, int file) 
@@ -810,9 +818,10 @@ public class Chess
 
         //@Override
         //public int makeMove(int rank, int file) 
+        // TODO: override makeMove to implement castling
 
         @Override
-        protected int isObserving(int rank, int file) 
+        public int isObserving(int rank, int file) 
         {
             if ( ( Math.abs(mRank - rank) <= 1 ) 
                     && ( Math.abs(mFile - file) <= 1 )
@@ -822,6 +831,64 @@ public class Chess
                 return MOVE_ILLEGAL; 
         }
     }
+    
+    private class Queen extends ChessPiece
+    {
+        private Queen(int color)
+        { super(color, QUEEN); }
+
+        @Override
+        public int isObserving(int rank, int file)
+        {
+            System.out.println("Calling queen isObserving " + Chess.convertInternalToAlgebraic(rank, file)); // DEBUG
+            if ( mRank == rank && mFile == file )  // already occupying square
+                 return MOVE_ILLEGAL;
+            else if ( mRank == rank )               // check if on same rank
+            {
+                // check if impeded
+                int d = mFile - file;   // difference
+                int s = Integer.signum(file - mFile);   // sign
+                for ( int i = 1; abs(d+i*s) > 0 ; i++)
+                {
+                    // Look at square (mRank), (mFile + s*i)
+                    System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(rank, mFile+s*i)); // DEBUG
+                    if ( mChessBoard[mRank][mFile+s*i] != null )
+                        return MOVE_ILLEGAL_IMPEDED;
+                }
+                return PIECE_IS_OBSERVING;
+            } else if ( mFile == file ) {           // check if on same file
+                int d = mRank - rank;
+                int s = Integer.signum(rank - mRank);
+                for (int i = 1; abs(d+i*s) > 0; i++)
+                {
+                    System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+s*i, mFile)); // DEBUG
+                    if( mChessBoard[mRank+s*i][mFile] != null )
+                        return MOVE_ILLEGAL_IMPEDED;
+                }
+                return PIECE_IS_OBSERVING;
+            } else if ( abs((double)(rank - mRank) / (double)(file - mFile) ) == 1.0 ) { // check positive diagonal
+                int d = mFile - file;   // difference
+                int s = Integer.signum(file - mFile);   // sign
+                int sl = (int)((double)(rank - mRank) / (double)(file - mFile)) ;  // slope
+                System.out.println("isObserving on diagonal, slope is " + sl);
+                for (int i = 1; abs(d+i*s) > 0; i++)
+                {
+                    // look at square (mRank + s*i), (mFile + s*i)
+                    System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+sl*s*i, mFile+s*i)); // DEBUG
+                    if( mChessBoard[mRank+sl*s*i][mFile+s*i] != null )
+                        return MOVE_ILLEGAL_IMPEDED;
+                }
+                return PIECE_IS_OBSERVING; 
+            }
+            
+            
+            // check if on positive diagonal
+            // check if on negative diagonal
+            
+            return MOVE_ILLEGAL;            
+        }
+    }
+
     
     // TODO: Implement all the pieces!!!!
     

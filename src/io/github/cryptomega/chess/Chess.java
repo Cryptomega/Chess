@@ -179,12 +179,21 @@ public class Chess
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
         addPieceToGame(WHITE, BISHOP, 0, 2 );
+        addPieceToGame(WHITE, KNIGHT, 0, 1 );
         addPieceToGame(WHITE, ROOK, 0, 0 );
+        addPieceToGame(WHITE, BISHOP, 0, 5 );
+        addPieceToGame(WHITE, KNIGHT, 0, 6 );
+        addPieceToGame(WHITE, ROOK, 0, 7 );
         
         
         addPieceToGame(BLACK, KING, 7, 4 );
         addPieceToGame(BLACK, QUEEN, 7, 3 );
+        addPieceToGame(BLACK, BISHOP, 7, 2 );
+        addPieceToGame(BLACK, KNIGHT, 7, 1 );
         addPieceToGame(BLACK, ROOK, 7, 0 );
+        addPieceToGame(BLACK, BISHOP, 7, 5 );
+        addPieceToGame(BLACK, KNIGHT, 7, 6 );
+        addPieceToGame(BLACK, ROOK, 7, 7 );
         
 
     }
@@ -339,7 +348,8 @@ public class Chess
                 newPiece = new Bishop(color);
                 break;
             case KNIGHT:
-                throw new UnsupportedOperationException("Knight not yet implemented.");
+                newPiece = new Knight(color);
+                break;
             case ROOK:
                 newPiece = new Rook(color);
                 break;
@@ -965,6 +975,27 @@ public class Chess
                 return PIECE_IS_OBSERVING; 
             }
             return MOVE_ILLEGAL;
+        }
+    }
+    
+    /**
+     * Knight class
+     */
+    private class Knight extends ChessPiece
+    {
+        private Knight(int color)
+        { super(color, KNIGHT); }
+
+        @Override
+        public int isObserving(int rank, int file)
+        {
+            if ( mRank == rank && mFile == file )  // already occupying square
+                 return MOVE_ILLEGAL;
+            if ( ( abs(mRank - rank) == 2 && abs(mFile - file) == 1 ) ||
+                 ( abs(mRank - rank) == 1 && abs(mFile - file) == 2  )  )
+                return PIECE_IS_OBSERVING;
+            return MOVE_ILLEGAL;
+                    
         }
     }
     

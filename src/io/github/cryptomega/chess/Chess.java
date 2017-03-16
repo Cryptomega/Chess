@@ -43,7 +43,7 @@ public class Chess
     public static final int PIECE_NOT_ACTIVE                  = 122;
     public static final int PIECE_IS_OBSERVING                = 199;
     
-        
+    
     // Piece states
     public static final int PIECE_ACTIVE        = 200;
     public static final int PIECE_CAPTURED      = 201;
@@ -644,7 +644,7 @@ public class Chess
         }
         
            /**
-            * Returns true if the piece is observing a square
+            * Returns true if the piece is observing (attacking) a square
             * @param rank value from 0-7
             * @param file value from 0-7
             * @return true or false
@@ -793,13 +793,11 @@ public class Chess
             // set the new position and update mChessBoard
             updatePosition(rank, file);
             
-            // if we de-abstract this function, add a call to
-            // makeMoveSpecial(int rank, int file, char promotionType)
-            // to handle pawn promotions and castling
+            // if we de-abstract this function, override this function
+            // for king and pawn class to handle pawn promotions and castling
+            // right here
             
-            // check if we are checking the enemy
-            // check if we are checkmating
-            // check if it a stalemate or draw
+            // check if we are checks, checkmate, stalemate or draw
             // int gameStateCode = checkGameState();
             
             // add move to mChessHistory (pass the previous coordinates)
@@ -826,8 +824,7 @@ public class Chess
                     && (rank != mRank || file != mFile) )
                 return PIECE_IS_OBSERVING;
             else
-                return MOVE_ILLEGAL;
-                   
+                return MOVE_ILLEGAL; 
         }
     }
     

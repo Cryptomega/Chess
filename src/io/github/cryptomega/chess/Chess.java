@@ -184,6 +184,7 @@ public class Chess
         addPieceToGame(WHITE, BISHOP, 0, 5 );
         addPieceToGame(WHITE, KNIGHT, 0, 6 );
         addPieceToGame(WHITE, ROOK, 0, 7 );
+        addPieceToGame(WHITE, PAWN, 1, 4);
         
         
         addPieceToGame(BLACK, KING, 7, 4 );
@@ -354,7 +355,8 @@ public class Chess
                 newPiece = new Rook(color);
                 break;
             case PAWN:
-                throw new UnsupportedOperationException("Pawn not yet implemented.");
+                newPiece = new Pawn(color);
+                break;
             default:
                 throw new IllegalArgumentException("Invalid piece type argument");
         }
@@ -1011,7 +1013,11 @@ public class Chess
         @Override
         public int isObserving(int rank, int file)
         {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            int direction = (mColor == WHITE) ? 1 : -1;
+            if ( (mRank + direction == rank) &&
+                    abs(mFile - file) == 1 )
+                return PIECE_IS_OBSERVING;
+            return MOVE_ILLEGAL;
         }
     }
             
@@ -1041,6 +1047,11 @@ public class Chess
         final ChessPiece PiecePromoted;
         final char promotionType;
         
+        
+        // Rook castled with. null if player didn't castle
+        final ChessPiece RookCastled;
+        final int fromRookRank, fromRookFile;
+        
 
         /**
          * Call after piece has moved and its position updated, before 
@@ -1057,6 +1068,7 @@ public class Chess
                 ChessPiece captured, ChessPiece promo, 
                 boolean check, boolean checkmate)
         {
+            
             PieceMoved = moved;
             fromRank = movedFromRank;
             fromFile = movedFromFile;
@@ -1079,6 +1091,10 @@ public class Chess
             else
                 promotionType = 'x';
             
+            RookCastled = null;
+            fromRookRank = -1;
+            fromRookFile = -1;
+            
             moveNumber = getMoveNumber();
             if ( mWhoseTurn == WHITE )
                 movePrefix = String.valueOf(moveNumber) + ". ";
@@ -1095,6 +1111,38 @@ public class Chess
             .append( (PiecePromoted == null) ? "" : "=" + promotionType )
             .append( checkmate ? "#" : check ? "+" : "");
             moveText = sb.toString();
+        }
+        
+        public RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
+                ChessPiece castledRook, int fromRookRank, int fromRookFile,
+                boolean check, boolean checkmate)
+        {
+            PieceMoved = moved;
+            fromRank = movedFromRank;
+            fromFile = movedFromFile;
+            toRank = PieceMoved.getPositionInternalRank();
+            toFile = PieceMoved.getPositionInternalFile();
+
+            RookCastled = castledRook;
+            this.fromRookRank = fromRookRank;
+            this.fromRookFile = fromRookFile;
+            
+            PieceCaptured = null;
+            capturedRank = -1;
+            capturedFile = -1;
+            PiecePromoted = null;
+            promotionType = 'x';
+            
+            moveNumber = getMoveNumber();
+            if ( mWhoseTurn == WHITE )
+                movePrefix = String.valueOf(moveNumber) + ". ";
+            else
+                movePrefix = String.valueOf(moveNumber) + "... ";
+            
+            if ( fromRookFile < movedFromFile  )
+                moveText = "0-0-0";
+            else
+                moveText = "0-0";
         }
     }
 }

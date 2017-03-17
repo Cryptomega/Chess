@@ -35,6 +35,12 @@ public class ChessDriver
             ChessPiece[][] board = chess.getBoard();
             printBoard(board);
             
+            // DEBUG isObserving() function
+            //ChessPiece piece = chess.getPieces().get(2);
+            //System.out.println("Move Code: " +
+            //        Chess.getMoveCodeText( piece.isObserving(0,0) ));
+            //break;
+            
             System.out.print("Enter move(00 to exit):");
             input = scanner.nextLine();
             
@@ -46,14 +52,20 @@ public class ChessDriver
             try { code = chess.makeMove(input); }
             catch (Exception e) 
             {
-                System.out.println(e.getMessage());
+                System.out.println(" > > > ERROR:" + e.getMessage() + " < < <");
                 continue;
             }
             
-            //System.out.println("\n");
-            System.out.println(code + ":" + Chess.getMoveCodeText(code)
-                            + " Move number: " + chess.getMoveNumber());
+            // DEBUG
+            System.out.println( chess.getCompleteMoveHistory() );
             
+            // DEBUG System.out.println("\n");
+            if ( code != Chess.MOVE_LEGAL )
+                System.out.println(" > > > " 
+                        + Chess.getMoveCodeText(code)
+                        + " ("+code+") < < <");
+            else
+                System.out.println(Chess.getMoveCodeText(code));
             //break; // DEBUG
         }
 
@@ -70,10 +82,20 @@ public class ChessDriver
             for (int j = 0; j < 8; j++)
             {
                 if ( board[i][j] == null )
-                    System.out.print('\u2001');
-                else
+                {
+                    if ( Chess.getSquareColor(i,j) == Chess.WHITE )
+                        System.out.print('\u2001');
+                    else    // black 
+                        System.out.print('\u2591');
+                } else {
                     System.out.print(board[i][j].getUnicode());
-                System.out.print(" \u2502 ");
+                }
+                if ( Chess.getSquareColor(i,j) == Chess.WHITE )
+                {   //white
+                    System.out.print(" \u2502 ");
+                } else { // black
+                    System.out.print(" \u2502 ");
+                }
             }
             System.out.println();
             if ( i == 0)

@@ -31,14 +31,18 @@ public class Chess
     
     // makeMove() and isValidMove() return codes
     public static final int MOVE_LEGAL                        = 100;
-    public static final int MOVE_ILLEGAL                      = 101;
-    public static final int MOVE_ILLEGAL_KING_IN_CHECK        = 102;
+    public static final int MOVE_LEGAL_EN_PASSANT             = 101;
+    public static final int MOVE_ILLEGAL                      = 102;
     public static final int MOVE_ILLEGAL_IMPEDED              = 103;
     public static final int MOVE_ILLEGAL_SQUARE_EMPTY         = 104;
     public static final int MOVE_ILLEGAL_WRONG_PLAYER         = 105;
     public static final int MOVE_ILLEGAL_CASTLE_THROUGH_CHECK = 106;
     public static final int MOVE_ILLEGAL_SQUARE_OCCUPIED      = 107;
     public static final int MOVE_ILLEGAL_PAWN_BLOCKED         = 108;
+    public static final int MOVE_ILLEGAL_PAWN_HAS_MOVED       = 109;
+    public static final int MOVE_ILLEGAL_NOTHING_TO_CAPTURE   = 110;
+    public static final int MOVE_ILLEGAL_LATE_EN_PASSANT      = 111;
+    public static final int MOVE_ILLEGAL_KING_IN_CHECK        = 112;
     public static final int AMBIGUOUS_PROMOTION               = 120;
     public static final int GAME_NOT_ACTIVE                   = 121;
     public static final int PIECE_NOT_ACTIVE                  = 122;
@@ -191,7 +195,8 @@ public class Chess
         addPieceToGame(WHITE, BISHOP, 0, 5 );
         addPieceToGame(WHITE, KNIGHT, 0, 6 );
         addPieceToGame(WHITE, ROOK, 0, 7 );
-        addPieceToGame(WHITE, PAWN, 1, 4);
+        for ( int i =0; i<8; i++)
+            addPieceToGame(WHITE, PAWN, 1, i);
         
         
         addPieceToGame(BLACK, KING, 7, 4 );
@@ -202,7 +207,8 @@ public class Chess
         addPieceToGame(BLACK, BISHOP, 7, 5 );
         addPieceToGame(BLACK, KNIGHT, 7, 6 );
         addPieceToGame(BLACK, ROOK, 7, 7 );
-        
+        for ( int i =0; i<8; i++)
+            addPieceToGame(BLACK, PAWN, 6, i);
 
     }
     
@@ -343,6 +349,7 @@ public class Chess
     }
     
     
+    
     // TODO: add validateMove(int,int,int,int) and/or (string) maybe?
     
     
@@ -351,10 +358,22 @@ public class Chess
      * *************************************************/
 
     /**
+     * Assumes king is in check, and checks for checkmate
+     * @param color color of player 
+     * @return true if player cannot escape check
+     */
+    private boolean cannotEscapeCheck(int color)
+    {
+        // TODO: implement
+        return false;
+    }
+    
+    /**
      * Adds a piece to the game (adds in the ArrayList mChessPieces)
      * */
     private ChessPiece addPieceToGame(int color, char type)
     {
+        type = Character.toUpperCase(type);
         //if ( mIsGameActive == true )
         //    throw new IllegalStateException("Cannot add piece while game is active");
         if ( color != WHITE && color != BLACK )
@@ -617,8 +636,6 @@ public class Chess
          */
         public int makeMove(String coord)
         {
-            // TODO: Override in Pawn class to check for promotion option
-            //       and call appropriate method
             return makeMove(Chess.convertAlgebraicToInternalRank(coord),
                     Chess.convertAlgebraicToInternalFile(coord) );
         }              
@@ -634,9 +651,6 @@ public class Chess
          */
         public int makeMove(int rank, int file, char promotionType)
         {
-            // TODO: Override in Pawn class to handle promotions
-            // Otherwise, just ignore promotionType
-            
             //System.out.println("Promotion type: " + promotionType); // DEBUG
             return makeMove(rank, file);
         }
@@ -649,7 +663,7 @@ public class Chess
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int file)
+        public int makeMove(int rank, int file)     
         {
             // TODO: finish implementation
 
@@ -755,18 +769,19 @@ public class Chess
          */
         public int validateMove(int rank, int file)
         {
-            // if not castling:
-            
-            // piece must be observing the square
-            int isObservingCode = isObserving(rank,file);
-            if ( isObservingCode != PIECE_IS_OBSERVING )
-                return isObservingCode;
+            if ( !isValidCoord(rank, file) )
+                throw new IllegalArgumentException("Invalid Coordinate");
             
             // square cannot be occupied by own piece
             if ( mChessBoard[rank][file] != null
                     && mChessBoard[rank][file].getColor() == mColor )
                 return MOVE_ILLEGAL_SQUARE_OCCUPIED;
             
+            // piece must be observing the square
+            int isObservingCode = isObserving(rank,file);
+            if ( isObservingCode != PIECE_IS_OBSERVING )
+                return isObservingCode;
+                        
             // cannot move into check:
             //      (1)update moving piece position, remove catpured piece if any
             //      (2)call isInCheck(mColor)
@@ -1066,6 +1081,237 @@ public class Chess
         private Pawn(int color)
         { super(color, PAWN); }
 
+        @Override
+        public int makeMove(String coord)
+        {
+            char promoType = ' ';
+            if ( coord.length() >= 4 )
+                promoType = coord.charAt(3);
+            return makeMove(Chess.convertAlgebraicToInternalRank(coord),
+                    Chess.convertAlgebraicToInternalFile(coord), promoType );
+        }
+        
+        @Override
+        public int makeMove(int rank, int file)
+        {
+            return makeMove(rank, file, ' ' );
+        }
+        
+        @Override
+        public int makeMove(int rank, int file, char promotionType)
+        {
+            // the pawn business
+            // check if game is active
+            if ( !mIsGameActive )
+                return GAME_NOT_ACTIVE;
+            
+            // make sure piece is active
+            if ( !mIsActive )
+                return PIECE_NOT_ACTIVE;
+            
+            // check mColor
+            if ( mColor != mWhoseTurn )
+                return MOVE_ILLEGAL_WRONG_PLAYER;
+            
+            // validate move
+            int code = validateMove(rank, file);
+            if ( code != MOVE_LEGAL && code != MOVE_LEGAL_EN_PASSANT ) return code;
+            
+            // switch timer
+            
+            ChessPiece promotion = null;
+            // check for promotion
+            if ( (mColor == WHITE && rank == 7 ) 
+                    || (mColor == BLACK && rank == 0 ) )
+            {
+                // get ready to promote!
+                if ( !isValidPromotionType(promotionType) )
+                    return AMBIGUOUS_PROMOTION; // not so fast
+                promotion = addPieceToGame(mColor,promotionType);
+            }
+            
+             //  implement en passant 
+            // capture piece, if any
+            ChessPiece captured = null;
+            if ( code == MOVE_LEGAL_EN_PASSANT )
+                captured = mChessBoard[mRank][file];
+            else
+                captured = mChessBoard[rank][file];
+            if ( captured != null )
+                captured.captured();
+            
+            // hold onto last location
+            int fromRank = mRank;
+            int fromFile = mFile;
+            
+            // set the new position and update mChessBoard
+            updatePosition(rank, file);
+            
+            if ( promotion != null )
+            {
+                mIsActive = false;
+                mStatus = PIECE_PROMOTED;
+                mChessBoard[rank][file] = null;
+                promotion.setPosition(rank, file);
+            }
+            // add promoted piece at rank,file, if needed
+            
+            // check for checks, checkmate, stalemate or draw
+            int opponentColor = ( mColor == WHITE ) ? BLACK : WHITE;
+            int playerStateCode = checkPlayerState(opponentColor);
+            boolean check = playerStateCode == PLAYER_IN_CHECK;
+            boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            
+            
+            
+            
+            //  pass promotion reference
+            // add move to mChessHistory (pass coordinates of previous square)
+            mChessHistory.add(new RecordOfMove(
+                    this, fromRank, fromFile,
+                    captured, promotion, 
+                    check, checkmate        ) );
+            
+            
+            // increment mTurnCount and mMoveCount
+            mTurnCount++;
+            mMoveCount++;
+            
+            // switch turn to other player
+            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+ 
+            return code;
+        }
+        
+        // validation helper function
+        public boolean isValidPromotionType(char promotionType)
+        {
+            promotionType = Character.toUpperCase(promotionType);
+            return promotionType == QUEEN
+                    || promotionType == BISHOP
+                    || promotionType == KNIGHT
+                    || promotionType == ROOK;
+                    
+        }
+        
+        
+        @Override
+        public int validateMove(int rank, int file) 
+        {
+            if ( !isValidCoord(rank, file) )
+                throw new IllegalArgumentException("Invalid Coordinate");
+            
+            // square cannot be occupied by own piece
+            if ( mChessBoard[rank][file] != null
+                    && mChessBoard[rank][file].getColor() == mColor )
+                return MOVE_ILLEGAL_SQUARE_OCCUPIED;
+            
+            
+            int direction = (mColor == WHITE) ? 1 : -1;
+            ChessPiece captured = null;
+            boolean enPassant = false;
+            if ( (mFile == file) && (mRank + direction == rank ) )  
+            {
+                // moving forward one square
+                if ( mChessBoard[rank][file] != null )
+                    return MOVE_ILLEGAL_PAWN_BLOCKED;
+            } else if ( (mFile == file) && (mRank + 2*direction == rank ) ) { 
+                // moving forward two squares
+                if ( mColor ==  WHITE && mRank != 1 )
+                    return MOVE_ILLEGAL;
+                if ( mColor ==  BLACK && mRank != 6 )
+                    return MOVE_ILLEGAL;
+                if ( mChessBoard[mRank + direction][file] != null )
+                    return MOVE_ILLEGAL_PAWN_BLOCKED;
+                if ( mChessBoard[rank][file] != null )
+                    return MOVE_ILLEGAL_PAWN_BLOCKED;
+                if ( mMoveCount != 0 )
+                    return MOVE_ILLEGAL_PAWN_HAS_MOVED;
+                
+            } else if ( (abs(mFile - file) == 1) && (mRank + direction == rank) ) {
+                // capturing a piece
+                captured = mChessBoard[rank][file];
+                if ( mChessBoard[rank][file] == null )
+                {
+                    // nothing to capture unless en passant is possible
+                    if ( mChessBoard[mRank][file] == null ) // en passant square is empty
+                        return MOVE_ILLEGAL_NOTHING_TO_CAPTURE;
+                    // check if we are on white's 5th rank
+                    if ( mColor == WHITE && mRank != 4 )
+                        return MOVE_ILLEGAL;
+                    // check if we are on black's 5th rank
+                    if ( mColor == BLACK && mRank != 3 )
+                        return MOVE_ILLEGAL;
+                    if (  mChessBoard[mRank][file].getColor() == mColor )
+                        return MOVE_ILLEGAL;
+                    if ( mChessBoard[mRank][file].getType() != PAWN )
+                        return MOVE_ILLEGAL;
+                    ChessPiece neighborPawn = mChessBoard[mRank][file];
+                    RecordOfMove lastMove = mChessHistory.get( mChessHistory.size() - 1 );
+                    if ( lastMove.PieceMoved != neighborPawn )
+                        return MOVE_ILLEGAL_LATE_EN_PASSANT;
+                    if ( lastMove.fromRank != mRank + 2*direction )
+                        return MOVE_ILLEGAL_LATE_EN_PASSANT;
+                    captured = neighborPawn;
+                    enPassant = true;
+                        
+                    
+                    //if ( mChessBoard[mRank][file].getCol
+                    //or && mChessBoard[mRank][file].getType )
+                    // if en passant square is an enemy pawn, 
+                    //and its just moved two square, E.P. is OK
+                    
+                } else if ( mChessBoard[rank][file].getColor() == mColor ) {
+                    return MOVE_ILLEGAL_SQUARE_OCCUPIED;
+                }
+            } else {
+                return MOVE_ILLEGAL;
+            }
+
+            
+            //  cange to mRank and mFile
+            int fromRank = mRank;  // save current rank 
+            int fromFile = mFile;  // and file
+            //int fromRank = getPositionInternalRank();  // save current rank 
+            //int fromFile = getPositionInternalFile();  // and file
+            
+            // cannot move into check:
+            //      (1)update moving piece position, remove catpured piece if any
+            //      (2)call isInCheck(mColor)
+            //      (3)undo moving piece, undo removing captured piece
+            // (1) get piece to be captured, if any
+            //ChessPiece captured = mChessBoard[rank][file];
+            if ( captured != null )
+            {
+                captured.mIsActive = false;     // temporarily deactivate
+                if ( enPassant )
+                    mChessBoard[fromRank][file] = null;
+            }
+            updatePosition(rank,file);   // (1)temporarily move the piece
+            
+            boolean isInCheck = isInCheck(mColor);  // (2)
+            
+            // undo temporary move (3)
+            updatePosition(fromRank, fromFile);
+            if ( captured != null )
+            {
+                captured.mIsActive = true;
+                if ( enPassant )
+                    mChessBoard[fromRank][file] = captured;
+                else
+                    mChessBoard[rank][file] = captured;
+                    
+            }
+            
+            if ( isInCheck )
+                return MOVE_ILLEGAL_KING_IN_CHECK;
+            
+            if ( enPassant )
+                return MOVE_LEGAL_EN_PASSANT;
+            else
+                return MOVE_LEGAL; 
+        }
+        
         @Override
         public int isObserving(int rank, int file)
         {

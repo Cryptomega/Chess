@@ -5,7 +5,6 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  *  Chess
@@ -35,7 +34,6 @@ public class Chess
     public static final int MOVE_LEGAL_EN_PASSANT             = 101;
     public static final int MOVE_LEGAL_CASTLE_KINGSIDE        = 102;
     public static final int MOVE_LEGAL_CASTLE_QUEENSIDE       = 103;
-    
     public static final int MOVE_ILLEGAL                      = 104;
     public static final int MOVE_ILLEGAL_IMPEDED              = 105;
     public static final int ILLEGAL_CASTLE_THROUGH_CHECK      = 106;
@@ -69,6 +67,22 @@ public class Chess
     public static final int PLAYER_IN_STALEMATE = 903;
     public static final int PLAYER_CLAIMS_DRAW  = 904;
     
+    // Game states
+    public static final int STATUS_WHITES_TURN =             800;
+    public static final int STATUS_BLACKS_TURN =             801;
+    public static final int STATUS_WHITE_WINS_CHECKMATE =    802;
+    public static final int STATUS_BLACK_WINS_CHECKMATE =    803;
+    public static final int STATUS_WHITE_WINS_TIME =         804;
+    public static final int STATUS_BLACK_WINS_TIME =         805;
+    public static final int STATUS_WHITE_WINS_RESIGNATION =  806;
+    public static final int STATUS_BLACK_WINS_RESIGNATION =  807;
+    public static final int STATUS_DRAW_WHITE_STALEMATE =    808;
+    public static final int STATUS_DRAW_BLACK_STALEMATE =    809;
+    public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810;
+    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811;
+    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812;
+    public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
+    public static final int STATUS_DRAW_AGREEMENT =          814;
     
     /* ****************************************
      * * * Game State variables * * *
@@ -619,6 +633,45 @@ public class Chess
                 || code == MOVE_LEGAL_CASTLE_QUEENSIDE ;
     }
     
+    public static String getGameStatusText(int code)
+    {
+        switch(code)
+        {
+            case STATUS_WHITES_TURN:
+                return "White's turn.";
+            case STATUS_BLACKS_TURN:
+                return "Black's turn.";
+            case STATUS_WHITE_WINS_CHECKMATE:
+                return "White wins by checkmate!";
+            case STATUS_BLACK_WINS_CHECKMATE:
+                return "Black wins by checkmate!";
+            case STATUS_WHITE_WINS_TIME:
+                return "White wins on time!";
+            case STATUS_BLACK_WINS_TIME:
+                return "Black wins on time!";
+            case STATUS_WHITE_WINS_RESIGNATION:
+                return "White wins by resignation.";
+            case STATUS_BLACK_WINS_RESIGNATION:
+                return "Black wins by resignation.";
+            case STATUS_DRAW_WHITE_STALEMATE:
+                return "White is stalemated!";
+            case STATUS_DRAW_BLACK_STALEMATE:
+                return "Black is stalemated!";
+            case STATUS_DRAW_WHITE_CLAIMS_THREE:
+                return "White claims drawy by three-fold repetition.";
+            case STATUS_DRAW_BLACK_CLAIMS_THREE:
+                return "Black claims drawy by three-fold repetition.";
+            case STATUS_DRAW_WHITE_CLAIMS_FIFTY:
+                return "White claims drawy by fifty move rule.";    
+             case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
+                return "Black claims drawy by fifty move rule.";   
+            case STATUS_DRAW_AGREEMENT:
+                return "Draw by agreement.";    
+            default:
+                return "Unknown Game State.";   
+        }
+    }
+    
     public static String getMoveCodeText(int code)
     {
         switch(code)
@@ -863,12 +916,13 @@ public class Chess
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
             
             // DEBUG
+            /*
                 System.out.println("playerStateCode: " + playerStateCode);
             if ( check )
                 System.out.println(getColorString(opponentColor) +" is in Check!");
             if ( checkmate )
                 System.out.println(getColorString(opponentColor) +" is in Checkmate!");
-            
+            // */ // END DEBUG
             
             // add move to mChessHistory (pass coordinates of previous square)
             mChessHistory.add(new RecordOfMove(
@@ -876,7 +930,7 @@ public class Chess
                     captured, null, 
                     check, checkmate        ) );
             
-            
+            // TODO: call EndTurn()
             // increment mTurnCount and mMoveCount
             mTurnCount++;
             mMoveCount++;
@@ -958,8 +1012,6 @@ public class Chess
         
         protected void setPosition(int rank, int file)
         {
-            //if ( mIsGameActive == true )
-             //   throw new IllegalStateException("Cannot set piece position while game is active");
             if ( !isValidCoord(rank, file) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
 
@@ -1935,7 +1987,7 @@ public class Chess
      *********************************************************/
     /**
      * Square class for methods that return list of squares,
-     *                                          ArrayList<Square>
+     *         ArrayList of Square objects
      */
     public static class Square
     {
@@ -2003,7 +2055,6 @@ public class Chess
         public static ArrayList<Square> getInterveningSquares(
                 int rank1, int file1, int rank2, int file2 )
         {
-            // TODO: implement
             ArrayList<Square> returnList = new ArrayList<>();
             if ( !isValidCoord(rank1,file1) || !isValidCoord(rank2,file2) )
                 return returnList;

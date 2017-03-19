@@ -4,6 +4,7 @@
 package io.github.cryptomega.chess;
 
 import io.github.cryptomega.chess.Chess.ChessPiece;
+import java.util.ArrayList;
 //import java.util.ArrayList;
 //import java.util.Arrays;
 import java.util.Scanner;
@@ -52,15 +53,28 @@ public class ChessDriver
             //System.out.println("Move Code: " +
             //        Chess.getMoveCodeText( piece.isObserving(0,0) ));
             //break;
-            
+
+            // get input            
             System.out.print("Enter move(00 to exit):");
             input = scanner.nextLine();
-            
-            
+
             if ( input.equals("00") )
-                break;
+                break;       // exit
             
             int code;
+            
+            if ( input.length() == 2 )
+            {
+                // get moves for piece
+                int rank = Chess.convertAlgebraicToInternalRank(input);
+                int file = Chess.convertAlgebraicToInternalFile(input);
+                if ( !Chess.isValidCoord(rank,file) )
+                    System.out.println(" > > > ERROR: Invalid location < < <");
+                ChessPiece piece = board[rank][file];
+                printCandidateMoves(piece);
+                continue;
+            }
+            
             try { code = chess.makeMove(input); }
             catch (Exception e) 
             {
@@ -84,6 +98,22 @@ public class ChessDriver
 
     }
 
+    public static void printCandidateMoves(ChessPiece piece)
+    {
+        if ( piece == null )
+        {
+            System.out.println("No piece there.");
+            return;
+        }
+        System.out.print("Printing candidate moves: ");
+        ArrayList<Chess.Square> list = piece.getCandidateMoves();
+        for (Chess.Square square: list)
+        {
+            System.out.print(square.toString() + ",");
+        }
+        System.out.println();
+    }
+    
     // Draws the text chess board to console with unicode 
     private static void printBoard(ChessPiece[][] board)
     {

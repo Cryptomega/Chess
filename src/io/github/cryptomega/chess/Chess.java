@@ -623,10 +623,16 @@ public class Chess
         return "InvalidColor";
     }
     
-    private static boolean isValidCoord(int rank, int file)
+    public static boolean isValidCoord(int rank, int file)
     {
         return (rank >= 0 && rank <= 7
                 && file >= 0 && file <= 7);
+    }
+    
+    public static boolean isValidCoord(String square)
+    {
+        return isValidCoord(convertAlgebraicToInternalRank(square),
+                convertAlgebraicToInternalFile(square) );
     }
     
     
@@ -871,7 +877,11 @@ public class Chess
             */
         abstract public int isObserving(int rank, int file);
         
-        //abstract public ArrayList<Square> getCandidateMoves();
+        /**
+         * Gets a list of squares the piece might be able to move to
+         * @return ArrayList of Square objects containing candidate squares
+         */
+        abstract public ArrayList<Square> getCandidateMoves();
         
         // public get methods
         /**
@@ -913,8 +923,6 @@ public class Chess
          */
         private boolean isTryingToCastle(int rank, int file)
         {
-            
-            
             if ( mColor == WHITE && mRank != 0)
                 return false;
             if ( mColor == BLACK && mRank != 7 ) 
@@ -958,9 +966,7 @@ public class Chess
         {
             // DEBUG printout
             //System.out.println("Executing Castle to " +
-            //        Chess.convertInternalToAlgebraic(rank, file));
-            
-            
+
             // check if game is active
             if ( !mIsGameActive )
                 return GAME_NOT_ACTIVE;
@@ -977,20 +983,17 @@ public class Chess
             int code = validateCastle(rank, file);
             if ( code != MOVE_LEGAL_CASTLE_KINGSIDE &&
                     code != MOVE_LEGAL_CASTLE_QUEENSIDE ) return code;
-            
-                       
-            // switch timer
+     
+            // TODO: switch timer
             
             // get rook
             ChessPiece castlingRook = getCastlingRook(rank,file);
-            
-            
+
             int fromRank = mRank;
             int fromFile = mFile;
             int fromRookRank = castlingRook.getRank();
             int fromRookFile = castlingRook.getFile();
-            
-            
+
             // castling which way
             boolean isCastlingKingside = fromRookFile > fromFile;
             
@@ -1013,11 +1016,7 @@ public class Chess
                     this, fromRank, fromFile,
                     castlingRook, fromRookRank, fromRookFile,
                     check, checkmate        ) );
-            /*
-            ChessPiece moved, int movedFromRank, int movedFromFile, 
-                ChessPiece castledRook, int fromRookRank, int fromRookFile,
-                boolean check, boolean checkmate
-            */
+
             
             // increment mTurnCount and mMoveCount
             mTurnCount++;
@@ -1092,7 +1091,6 @@ public class Chess
             {
                 // DEBUG
                 //System.out.println("checking impeded, file: " + i);
-                
                 ChessPiece square = mChessBoard[rank][i];
                 if ( square == null )
                     continue;
@@ -1145,6 +1143,33 @@ public class Chess
                 return PIECE_IS_OBSERVING;
             else
                 return MOVE_ILLEGAL; 
+        }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            for (int i = mRank-1; i <= mRank+1; i++)
+                for (int j = mFile-1; j <= mFile+1; j++)
+                {
+                    if ( i == mRank && j == mFile )
+                        continue;
+                    if ( isValidCoord(i,j) )
+                        returnList.add(new Square(i,j));
+                }
+            // if move count is 0, add castle candidate move
+            if ( mMoveCount == 0)
+            {
+                if ( mFile == 4 )   // standard king starting position
+                {
+                    returnList.add(new Square(mRank,6));
+                    returnList.add(new Square(mRank,2));
+                } else {
+                    // TODO: make castling discoverable in Chess960 
+                }
+            }
+            
+            return returnList;
         }
     }
     
@@ -1202,6 +1227,15 @@ public class Chess
             }
             return MOVE_ILLEGAL;            
         }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        {
+            ArrayList<Square> returnList = Square.getDiagonals(mRank,mFile);
+            returnList.addAll( Square.getFile(mFile) );
+            returnList.addAll( Square.getRank(mRank) );
+            return returnList;            
+        }
     }
 
     /**
@@ -1243,6 +1277,14 @@ public class Chess
             }
             return MOVE_ILLEGAL;
         }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        {
+            ArrayList<Square> returnList = Square.getFile(mFile);
+            returnList.addAll( Square.getRank(mRank) );
+            return returnList;  
+        }
     }
     
     /**
@@ -1274,6 +1316,10 @@ public class Chess
             }
             return MOVE_ILLEGAL;
         }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        { return Square.getDiagonals(mRank, mFile); }
     }
     
     /**
@@ -1296,6 +1342,23 @@ public class Chess
                 return PIECE_IS_OBSERVING;
             return MOVE_ILLEGAL;
                     
+        }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            for (int rankStep = 1; rankStep <= 2; rankStep++)
+                for (int rankDir = -1; rankDir <= 1; rankDir += 2)
+                    for (int fileDir = -1; fileDir <= 1; fileDir += 2)
+                    {
+                        int fileStep = ( rankStep == 1 ) ? 2 : 1;
+                        int rank = mRank + rankDir*rankStep;
+                        int file = mFile + fileDir*fileStep;
+                        if ( isValidCoord(rank,file) )
+                            returnList.add(new Square(rank,file));                        
+                    }
+            return returnList;
         }
     }
     
@@ -1547,6 +1610,23 @@ public class Chess
                 return PIECE_IS_OBSERVING;
             return MOVE_ILLEGAL;
         }
+
+        @Override
+        public ArrayList<Square> getCandidateMoves()
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            int direction = (mColor == WHITE) ? 1 : -1;
+            int rank = mRank + direction;
+            for (int file = mFile - 1; file <= mFile + 1; file++)
+            {
+                if ( isValidCoord(rank,file) )
+                    returnList.add(new Square(rank,file));
+            }
+            int rank2 = mRank + 2 * direction;
+            if (mMoveCount == 0 && isValidCoord(rank2,mFile))
+                returnList.add(new Square(rank2,mFile));
+            return returnList;
+        }
     }
             
     
@@ -1714,10 +1794,54 @@ public class Chess
             this.file = file;
         }
         
+        public String toString()
+        { return Chess.convertInternalToAlgebraic(rank, file); }
+        
         public boolean isEqual(Square square)
         { return this.rank == square.rank && this.file == square.file; }
         
         public static boolean isEqual(Square square1, Square square2)
         { return square1.rank == square2.rank && square1.file == square2.file; }
+        
+        // Static helper methods
+        public static ArrayList<Square> getDiagonals(Square square)
+        { return getDiagonals(square.rank, square.file); }
+        
+        public static ArrayList<Square> getDiagonals(int rank, int file)
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            
+            for (int dRank = -1; dRank <= 1; dRank += 2  )
+                for (int dFile = -1; dFile <= 1; dFile += 2  )
+                    for (int i = 1; i < 8; i++)
+                    {
+                        int newRank = rank + i * dRank;
+                        int newFile = file + i * dFile;
+                        if (!isValidCoord(newRank,newFile))
+                            break;
+                        returnList.add(new Square(newRank,newFile));
+                    }
+            return returnList;
+        }
+        
+        public static ArrayList<Square> getFile(int file)
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            if ( file < 0 || file > 7 )
+                return returnList;  //return empty
+            for (int i = 0; i < 8; i++)
+                returnList.add(new Square(i,file));
+            return returnList;
+        }
+        
+        public static ArrayList<Square> getRank(int rank)
+        {
+            ArrayList<Square> returnList = new ArrayList<>();
+            if ( rank < 0 || rank > 7 )
+                return returnList;  //return empty
+            for (int i = 0; i < 8; i++)
+                returnList.add(new Square(rank,i));
+            return returnList;
+        }
     }
 }

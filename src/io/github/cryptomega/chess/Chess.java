@@ -5,7 +5,6 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
-import java.util.Collections;
 
 /**
  *  Chess
@@ -192,7 +191,7 @@ public class Chess
         //    throw new IllegalStateException("Cannot add piece while game is active");
         clearGame();
        
-        //TODO: Create pieces and place on board
+        
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
@@ -312,8 +311,8 @@ public class Chess
     {
         // get the king
         ChessPiece king = getKing(color);
-        int kingRank = king.getPositionInternalRank();
-        int kingFile = king.getPositionInternalFile();
+        int kingRank = king.getRank();
+        int kingFile = king.getFile();
         return isInCheck(color, kingRank, kingFile);
     }
     
@@ -678,14 +677,16 @@ public class Chess
          */
         public int makeMove(int rank, int file)
         {
-            // TODO: finish implementation
+            
            
             // DEBUG printout
+            /*
             System.out.println("Executing ("
                     + getPosition()
                     + ") " + Chess.getName(mType) 
                     + " makeMove (ChessPiece) to " +
                     Chess.convertInternalToAlgebraic(rank, file));
+            */
             // END DEBUG
             
             // check if game is active
@@ -775,8 +776,8 @@ public class Chess
             //      (2)call isInCheck(mColor)
             //      (3)undo moving piece, undo removing captured piece
             
-            int fromRank = getPositionInternalRank();  // save current rank
-            int fromFile = getPositionInternalFile();  // and file
+            int fromRank = getRank();  // save current rank
+            int fromFile = getFile();  // and file
             
             // (1) get piece to be captured, if any
             ChessPiece captured = mChessBoard[rank][file];
@@ -860,8 +861,8 @@ public class Chess
          */
         public String getPosition()
             { return Chess.convertInternalToAlgebraic(mRank, mFile); } 
-        public int getPositionInternalRank() { return mRank; }
-        public int getPositionInternalFile() { return mFile; }
+        public int getRank() { return mRank; }
+        public int getFile() { return mFile; }
         public char getType() { return mType; }
         public int getColor() { return mColor; }
         public int getStatus() { return mStatus; }
@@ -894,7 +895,7 @@ public class Chess
         private boolean isTryingToCastle(int rank, int file)
         {
             
-            // TODO: implement
+            
             if ( mColor == WHITE && mRank != 0)
                 return false;
             if ( mColor == BLACK && mRank != 7 ) 
@@ -940,7 +941,7 @@ public class Chess
             //System.out.println("Executing Castle to " +
             //        Chess.convertInternalToAlgebraic(rank, file));
             
-            // TODO: implement
+            
             // check if game is active
             if ( !mIsGameActive )
                 return GAME_NOT_ACTIVE;
@@ -967,10 +968,10 @@ public class Chess
             
             int fromRank = mRank;
             int fromFile = mFile;
-            int fromRookRank = castlingRook.getPositionInternalRank();
-            int fromRookFile = castlingRook.getPositionInternalFile();
+            int fromRookRank = castlingRook.getRank();
+            int fromRookFile = castlingRook.getFile();
             
-            // TODO:
+            
             // castling which way
             boolean isCastlingKingside = fromRookFile > fromFile;
             
@@ -988,7 +989,7 @@ public class Chess
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
             
-             // TODO: change this call
+             //  change this call
             mChessHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     castlingRook, fromRookRank, fromRookFile,
@@ -1012,7 +1013,7 @@ public class Chess
         private ChessPiece getCastlingRook(int toRank, int toFile)
         {
             // returns the rook to castle with
-            int kingFile = getPositionInternalFile();
+            int kingFile = getFile();
             int sign = Integer.signum( toFile - kingFile );
             
             for ( int i = kingFile + sign; (i >= 0 && i < 8); i += sign )
@@ -1035,7 +1036,6 @@ public class Chess
          */
         private int validateCastle(int rank, int file)
         {
-            // TODO: implement
             // has king already moved?
             if ( mMoveCount != 0 )
                 return ILLEGAL_CASTLE_KING_HAS_MOVED;
@@ -1050,8 +1050,8 @@ public class Chess
                 return ILLEGAL_CASTLE_ROOK_HAS_MOVED;
             
             // check if impeded
-            int rookFile = castlingRook.getPositionInternalFile();
-            int kingFile = getPositionInternalFile();
+            int rookFile = castlingRook.getFile();
+            int kingFile = getFile();
             
             boolean isCastlingKingside = rookFile > kingFile;
             
@@ -1072,7 +1072,7 @@ public class Chess
             for (int i = minFile; i <= maxFile; i++)
             {
                 // DEBUG
-                System.out.println("Castle check, file: " + i);
+                //System.out.println("checking impeded, file: " + i);
                 
                 ChessPiece square = mChessBoard[rank][i];
                 if ( square == null )
@@ -1094,6 +1094,7 @@ public class Chess
             boolean throughCheck = false;
             for (int i = minFile; i <= maxFile; i++)
             {
+                //System.out.println("checking for check, file: " + i);
                 if ( isInCheck(mColor,rank,i) )
                 {
                     throughCheck = true;
@@ -1530,8 +1531,6 @@ public class Chess
     }
             
     
-    // TODO: Implement all the pieces!!!!
-    
 
     /** *****************************************************
      * ChessMove object for keeping track of game history
@@ -1585,14 +1584,14 @@ public class Chess
             PieceMoved = moved;
             fromRank = movedFromRank;
             fromFile = movedFromFile;
-            toRank = PieceMoved.getPositionInternalRank();
-            toFile = PieceMoved.getPositionInternalFile();
+            toRank = PieceMoved.getRank();
+            toFile = PieceMoved.getFile();
             
             PieceCaptured = captured;
             if ( PieceCaptured != null )
             {
-                capturedRank = moved.getPositionInternalRank();
-                capturedFile = moved.getPositionInternalFile();
+                capturedRank = moved.getRank();
+                capturedFile = moved.getFile();
             } else {
                 capturedRank = -1;
                 capturedFile = -1;
@@ -1648,8 +1647,8 @@ public class Chess
             PieceMoved = moved;
             fromRank = movedFromRank;
             fromFile = movedFromFile;
-            toRank = PieceMoved.getPositionInternalRank();
-            toFile = PieceMoved.getPositionInternalFile();
+            toRank = PieceMoved.getRank();
+            toFile = PieceMoved.getFile();
 
             RookCastled = castledRook;
             if ( RookCastled == null )

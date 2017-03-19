@@ -29,6 +29,18 @@ public class ChessDriver
         String input;
         Scanner scanner = new Scanner(System.in);
         
+        chess.makeMove("e2 e4");
+        chess.makeMove("e7 e5");
+        chess.makeMove("g1 f3");
+        chess.makeMove("g8 f6");
+        chess.makeMove("f1 c4");
+        chess.makeMove("f8 c5");
+        chess.makeMove("d2 d3");
+        chess.makeMove("d7 d6");
+        chess.makeMove("f3 h4");
+        chess.makeMove("f6 h5");
+        
+        
         // game loop
         while ( true )
         {

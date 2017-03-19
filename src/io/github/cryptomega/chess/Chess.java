@@ -342,6 +342,23 @@ public class Chess
     {
         // TODO: impement
         // check for check, checkmate, stalemate, or draw
+        ChessPiece king = getKing(color);
+        boolean playerInCheck = isInCheck(color);
+        boolean playerInMate = false;
+        if ( playerInCheck )
+        {
+            // check for checkmate
+            if ( cannotEscapeCheck(color) )
+                return PLAYER_IN_CHECKMATE;        
+        } else {
+        
+            // check for stalemate
+        }
+        
+        // if player wants to claim draw,
+        //      check three fold repetition
+        //      check last fifty moves
+        
         
         /*
         return codes:
@@ -853,6 +870,8 @@ public class Chess
             * @return true or false
             */
         abstract public int isObserving(int rank, int file);
+        
+        //abstract public ArrayList<Square> getCandidateMoves();
         
         // public get methods
         /**
@@ -1673,5 +1692,32 @@ public class Chess
             else
                 moveText = "0-0";
         }
+    }
+    
+    /********************************************************
+     ******************************************************** 
+     *********************************************************/
+    /**
+     * Square class for methods that return list of squares,
+     *                                          ArrayList<Square>
+     */
+    public static class Square
+    {
+        public final int rank;
+        public final int file;
+        
+        public Square(int rank, int file)
+        {
+            if ( !isValidCoord(rank,file))
+                throw new IllegalArgumentException("new Square called with invalid coordinate");
+            this.rank = rank;
+            this.file = file;
+        }
+        
+        public boolean isEqual(Square square)
+        { return this.rank == square.rank && this.file == square.file; }
+        
+        public static boolean isEqual(Square square1, Square square2)
+        { return square1.rank == square2.rank && square1.file == square2.file; }
     }
 }

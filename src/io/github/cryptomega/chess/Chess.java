@@ -5,6 +5,7 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  *  Chess
@@ -32,17 +33,23 @@ public class Chess
     // makeMove() and isValidMove() return codes
     public static final int MOVE_LEGAL                        = 100;
     public static final int MOVE_LEGAL_EN_PASSANT             = 101;
-    public static final int MOVE_ILLEGAL                      = 102;
-    public static final int MOVE_ILLEGAL_IMPEDED              = 103;
-    public static final int MOVE_ILLEGAL_SQUARE_EMPTY         = 104;
-    public static final int MOVE_ILLEGAL_WRONG_PLAYER         = 105;
-    public static final int MOVE_ILLEGAL_CASTLE_THROUGH_CHECK = 106;
+    public static final int MOVE_LEGAL_CASTLE_KINGSIDE        = 102;
+    public static final int MOVE_LEGAL_CASTLE_QUEENSIDE       = 103;
+    
+    public static final int MOVE_ILLEGAL                      = 104;
+    public static final int MOVE_ILLEGAL_IMPEDED              = 105;
+    public static final int ILLEGAL_CASTLE_THROUGH_CHECK      = 106;
     public static final int MOVE_ILLEGAL_SQUARE_OCCUPIED      = 107;
     public static final int MOVE_ILLEGAL_PAWN_BLOCKED         = 108;
     public static final int MOVE_ILLEGAL_PAWN_HAS_MOVED       = 109;
     public static final int MOVE_ILLEGAL_NOTHING_TO_CAPTURE   = 110;
     public static final int MOVE_ILLEGAL_LATE_EN_PASSANT      = 111;
     public static final int MOVE_ILLEGAL_KING_IN_CHECK        = 112;
+    public static final int MOVE_ILLEGAL_SQUARE_EMPTY         = 113;
+    public static final int ILLEGAL_CASTLE_KING_HAS_MOVED     = 114;
+    public static final int ILLEGAL_CASTLE_ROOK_HAS_MOVED     = 115;
+    public static final int ILLEGAL_CASTLE_IMPEDED            = 116;
+    public static final int MOVE_ILLEGAL_WRONG_PLAYER         = 117;
     public static final int AMBIGUOUS_PROMOTION               = 120;
     public static final int GAME_NOT_ACTIVE                   = 121;
     public static final int PIECE_NOT_ACTIVE                  = 122;
@@ -508,6 +515,12 @@ public class Chess
         {
             case MOVE_LEGAL:
                 return "Move is legal.";
+            case MOVE_LEGAL_EN_PASSANT:
+                return "En Passant.";
+            case MOVE_LEGAL_CASTLE_KINGSIDE:
+                return "Move is legal. Castling Kingside.";
+                case MOVE_LEGAL_CASTLE_QUEENSIDE:
+                return "Move is legal. Castling Queenside.";
             case MOVE_ILLEGAL:                
                 return "Not a legal move.";
             case MOVE_ILLEGAL_KING_IN_CHECK:  
@@ -518,7 +531,7 @@ public class Chess
                 return "No piece at the square.";
             case MOVE_ILLEGAL_WRONG_PLAYER:
                 return "Wrong Player.";
-            case MOVE_ILLEGAL_CASTLE_THROUGH_CHECK:
+            case ILLEGAL_CASTLE_THROUGH_CHECK:
                 return "Cannot castle through check.";
             case MOVE_ILLEGAL_SQUARE_OCCUPIED:
                 return "Square is already occupied";
@@ -663,40 +676,16 @@ public class Chess
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int file)     
+        public int makeMove(int rank, int file)
         {
             // TODO: finish implementation
-
-            //DEBUG 
-            /*
-            System.out.print(getName() + " is observing: ");
-            for (int i =0; i < 8; i++ )
-                for (int j =0; j < 8; j++ )
-                    if ( isObserving(i,j) == MOVE_LEGAL )
-                        System.out.print(
-                                Chess.convertInternalToAlgebraic(i, j)
-                            + ", ");
-            System.out.println("");
-            */
-            // END DEBUG
-            
-            /*
-            // DEBUG
-            for (int i =0; i < 8; i++ )
-                for (int j =0; j < 8; j++ )
-                    if (isInCheck(mColor,i,j) )
-                        System.out.println(Chess.convertInternalToAlgebraic(i, j) + " is in check.");
-            // END DEBUG
-            */
-            
+           
             // DEBUG printout
-            /*
             System.out.println("Executing ("
                     + getPosition()
                     + ") " + Chess.getName(mType) 
-                    + " makeMove to " +
+                    + " makeMove (ChessPiece) to " +
                     Chess.convertInternalToAlgebraic(rank, file));
-            */
             // END DEBUG
             
             // check if game is active
@@ -718,7 +707,6 @@ public class Chess
             // switch timer
             
             
-             // TODO: for pawn, implement en passant differently
             // capture piece, if any
             ChessPiece captured = mChessBoard[rank][file];
             if ( captured != null )
@@ -866,6 +854,10 @@ public class Chess
         abstract public int isObserving(int rank, int file);
         
         // public get methods
+        /**
+         * Gets the position in algebraic coordinates
+         * @return string
+         */
         public String getPosition()
             { return Chess.convertInternalToAlgebraic(mRank, mFile); } 
         public int getPositionInternalRank() { return mRank; }
@@ -893,22 +885,236 @@ public class Chess
         private King(int color)
         { super(color, KING); }
 
-        //@Override
-        //public int validateMove(int rank, int file) 
-        
-            // TODO: implement
+        /**
+         * Helper function to see if player intends to castle
+         * @param rank inputed rank
+         * @param file inputed file
+         * @return true if player is trying to castle
+         */
+        private boolean isTryingToCastle(int rank, int file)
+        {
             
-            // TODO: override in King to implement castling
-            // is player trying to castle? if yes:
-            //      cannot castle out of check
-            //      cannot castle through or into check
-            //      king and rook cannot have moved
-            //      cannot be impeded
-        
+            // TODO: implement
+            if ( mColor == WHITE && mRank != 0)
+                return false;
+            if ( mColor == BLACK && mRank != 7 ) 
+                return false;
+            if ( mRank != rank )
+                return false;
+            if ( mChessBoard[rank][file] != null && 
+                 mChessBoard[rank][file].getColor() != mColor )
+                return false;
+            if ( abs(mFile - file) == 2 )
+                return true;
+            return ( mChessBoard[rank][file] != null && 
+                     mChessBoard[rank][file].getType() == ROOK );
+        }
+                
+        @Override
+        public int validateMove(int rank, int file)
+        {
+            if ( isTryingToCastle(rank,file) )
+                return validateCastle(rank,file);
+            else
+                return super.validateMove(rank, file);
+        }
 
-        //@Override
-        //public int makeMove(int rank, int file) 
-        // TODO: override makeMove to implement castling
+        @Override
+        public int makeMove(int rank, int file) 
+        {
+            if ( !isTryingToCastle(rank, file) )
+                return super.makeMove(rank, file);
+            return tryToCastle(rank,file);
+        }
+        
+        /**
+         * Attempts to castle if legal
+         * @param rank inputed rank
+         * @param file inputed file
+         * @return MOVE_LEGAL_CASTLE if successful, otherwise returns
+         *         an error code
+         */
+        private int tryToCastle(int rank, int file)
+        {
+            // DEBUG printout
+            //System.out.println("Executing Castle to " +
+            //        Chess.convertInternalToAlgebraic(rank, file));
+            
+            // TODO: implement
+            // check if game is active
+            if ( !mIsGameActive )
+                return GAME_NOT_ACTIVE;
+            
+            // make sure piece is active
+            if ( !mIsActive )
+                return PIECE_NOT_ACTIVE;
+            
+            // check mColor
+            if ( mColor != mWhoseTurn )
+                return MOVE_ILLEGAL_WRONG_PLAYER;
+            
+            // validate move
+            int code = validateCastle(rank, file);
+            if ( code != MOVE_LEGAL_CASTLE_KINGSIDE &&
+                    code != MOVE_LEGAL_CASTLE_QUEENSIDE ) return code;
+            
+                       
+            // switch timer
+            
+            // get rook
+            ChessPiece castlingRook = getCastlingRook(rank,file);
+            
+            
+            int fromRank = mRank;
+            int fromFile = mFile;
+            int fromRookRank = castlingRook.getPositionInternalRank();
+            int fromRookFile = castlingRook.getPositionInternalFile();
+            
+            // TODO:
+            // castling which way
+            boolean isCastlingKingside = fromRookFile > fromFile;
+            
+            int toKingFile = isCastlingKingside ? 6 : 2;
+            int toRookFile = isCastlingKingside ? 5 : 3;
+            
+
+            // update king and rook
+            updatePosition(fromRank, toKingFile);
+            castlingRook.updatePosition(fromRookRank, toRookFile);
+            
+            // check for checks, checkmate, stalemate or draw
+            int opponentColor = ( mColor == WHITE ) ? BLACK : WHITE;
+            int playerStateCode = checkPlayerState(opponentColor);
+            boolean check = playerStateCode == PLAYER_IN_CHECK;
+            boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            
+             // TODO: change this call
+            mChessHistory.add(new RecordOfMove(
+                    this, fromRank, fromFile,
+                    castlingRook, fromRookRank, fromRookFile,
+                    check, checkmate        ) );
+            /*
+            ChessPiece moved, int movedFromRank, int movedFromFile, 
+                ChessPiece castledRook, int fromRookRank, int fromRookFile,
+                boolean check, boolean checkmate
+            */
+            
+            // increment mTurnCount and mMoveCount
+            mTurnCount++;
+            mMoveCount++;
+            
+            // switch turn to other player
+            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+            
+            return code;
+        }
+        
+        private ChessPiece getCastlingRook(int toRank, int toFile)
+        {
+            // returns the rook to castle with
+            int kingFile = getPositionInternalFile();
+            int sign = Integer.signum( toFile - kingFile );
+            
+            for ( int i = kingFile + sign; (i >= 0 && i < 8); i += sign )
+            {
+                if ( mChessBoard[toRank][i] != null && 
+                        mChessBoard[toRank][i].getType() == ROOK )
+                    return mChessBoard[toRank][i];
+            }
+            return null;
+        }
+        
+        
+        /**
+         * Checks if king can castle, 
+         * assuming isTryingToCastle(rank,file) returned true
+         * @param rank
+         * @param file
+         * @return MOVE_LEGAL_CASTLE_KINGSIDE or MOVE_LEGAL_CASTLE_QUEENSIDE
+         *         if castling is allowed, otherwise returns an error code
+         */
+        private int validateCastle(int rank, int file)
+        {
+            // TODO: implement
+            // has king already moved?
+            if ( mMoveCount != 0 )
+                return ILLEGAL_CASTLE_KING_HAS_MOVED;
+            
+            // get the rook
+            ChessPiece castlingRook = getCastlingRook(rank,file);
+            if ( !castlingRook.mIsActive )
+                return MOVE_ILLEGAL;
+            
+            // rook cannot have made a move already
+            if ( castlingRook.mMoveCount != 0 )
+                return ILLEGAL_CASTLE_ROOK_HAS_MOVED;
+            
+            // check if impeded
+            int rookFile = castlingRook.getPositionInternalFile();
+            int kingFile = getPositionInternalFile();
+            
+            boolean isCastlingKingside = rookFile > kingFile;
+            
+            int toKingFile = isCastlingKingside ? 6 : 2;
+            int toRookFile = isCastlingKingside ? 5 : 3;
+            
+            
+            // check for impeded
+            int[] fileList = {rookFile,kingFile,toKingFile,toRookFile};
+            int minFile = toKingFile;
+            int maxFile = toKingFile;
+            for (int i = 0; i < fileList.length; i++)
+            {
+                minFile = fileList[i] < minFile ? fileList[i] : minFile;
+                maxFile = fileList[i] > maxFile ? fileList[i] : maxFile;
+            }
+            
+            for (int i = minFile; i <= maxFile; i++)
+            {
+                // DEBUG
+                System.out.println("Castle check, file: " + i);
+                
+                ChessPiece square = mChessBoard[rank][i];
+                if ( square == null )
+                    continue;
+                if ( square != this && square != castlingRook )
+                    return ILLEGAL_CASTLE_IMPEDED;
+            }
+                        
+            
+            
+            // temporarily deactive rook
+            if ( mChessBoard[rank][rookFile] != castlingRook)
+                return MOVE_ILLEGAL;
+            mChessBoard[rank][rookFile] = null;
+            
+            // check for checks
+            minFile = isCastlingKingside ? kingFile : toKingFile;
+            maxFile = isCastlingKingside ? toKingFile : kingFile;
+            boolean throughCheck = false;
+            for (int i = minFile; i <= maxFile; i++)
+            {
+                if ( isInCheck(mColor,rank,i) )
+                {
+                    throughCheck = true;
+                    break;
+                }                
+            }
+            
+            // re-activate rook
+            mChessBoard[rank][rookFile] = castlingRook;
+            
+            if ( throughCheck )
+                return ILLEGAL_CASTLE_THROUGH_CHECK;
+            
+            return isCastlingKingside ? 
+                    MOVE_LEGAL_CASTLE_KINGSIDE : MOVE_LEGAL_CASTLE_QUEENSIDE;
+            
+            
+            //      cannot castle out of check
+            //      cannot castle through or into check        
+        };
+        
 
         @Override
         public int isObserving(int rank, int file) 
@@ -1132,7 +1338,7 @@ public class Chess
             
              //  implement en passant 
             // capture piece, if any
-            ChessPiece captured = null;
+            ChessPiece captured;
             if ( code == MOVE_LEGAL_EN_PASSANT )
                 captured = mChessBoard[mRank][file];
             else

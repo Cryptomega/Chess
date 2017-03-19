@@ -371,7 +371,23 @@ public class Chess
                 return PLAYER_IN_CHECKMATE;        
         } else {
         
+            // TODO:
             // check for stalemate
+            boolean playerHasValidMove = false;
+            for ( ChessPiece piece : mChessPieces )
+            {
+                if ( piece.getColor() != color )
+                    continue;
+                if ( piece.hasValidMove() )
+                {
+                    playerHasValidMove = true;
+                    break;
+                }
+            }
+            
+            if ( !playerHasValidMove )
+                return PLAYER_IN_STALEMATE;
+            
         }
 
         // if player wants to claim draw,

@@ -5,6 +5,7 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  *  Chess
@@ -148,6 +149,24 @@ public class Chess
         { return (ArrayList<ChessPiece>) mChessPieces.clone(); }
     
     //public void restartGame() {}  // TODO: implement? might not be useful
+    
+    public String getCompleteMoveHistory()
+    {
+        String history = "";
+        boolean whitesTurn = true;
+        for ( RecordOfMove item : mChessHistory )
+        {
+            if ( whitesTurn )
+                history += item.movePrefix;
+            history += item.moveText;
+            if ( whitesTurn )
+                history += " ";
+            else
+                history += "\n";
+            whitesTurn = !whitesTurn;
+        }
+        return history;
+    }
     
     /**
      * Initializes the game board (mChessBoard) to all null values 
@@ -354,12 +373,11 @@ public class Chess
         
             // check for stalemate
         }
-        
+
         // if player wants to claim draw,
         //      check three fold repetition
         //      check last fifty moves
-        
-        
+
         /*
         return codes:
         PLAYER_OK
@@ -368,6 +386,9 @@ public class Chess
         PLAYER_IN_STALEMATE
         PLAYER_CLAIMS_DRAW
         */
+        
+        if ( playerInCheck )
+            return PLAYER_IN_CHECK;
         return PLAYER_OK;
     }
     
@@ -387,8 +408,73 @@ public class Chess
      */
     private boolean cannotEscapeCheck(int color)
     {
-        // TODO: implement
-        return false;
+        // get the king
+        ChessPiece king = getKing(color);
+        int kingRank = king.getRank();
+        int kingFile = king.getFile();
+        
+        // get checking piece(s)
+        ChessPiece checkingPiece = null;
+        boolean doubleCheck = false;
+
+        for( ChessPiece piece : mChessPieces )
+        {
+            if ( !piece.mIsActive || piece.mColor == color ) // skip is inactive or same color
+                continue;
+            if ( piece.isObserving(kingRank, kingFile) == PIECE_IS_OBSERVING )
+            {
+                if ( checkingPiece == null )
+                {
+                    checkingPiece = piece;  // grab checking piece
+                } else {
+                    // it is double check
+                    doubleCheck = true;
+                    break;
+                }
+            }
+        }
+        
+        if ( checkingPiece == null )
+            return false;
+        
+        if ( !doubleCheck )
+        {
+            // if not double check, check for blocks or captures
+            int cRank = checkingPiece.getRank();
+            int cFile = checkingPiece.getFile();
+            ArrayList<Square> interveningSquares 
+                    = Square.getInterveningSquares(
+                            kingRank, kingFile, cRank, cFile );
+            
+            // get intervening squares
+            interveningSquares.add( new Square(cRank, cFile) );
+            
+            // check for odd case when en passant saves king from checkmage
+            if ( checkingPiece.getType() == PAWN && checkingPiece.mMoveCount == 1 
+                && ( ( color == WHITE && checkingPiece.getRank() == 4 ) 
+                    || ( color == BLACK && checkingPiece.getRank() == 3 ) ) )
+            {
+                int enPassantRank = (color == WHITE) ? 5 : 2;
+                if ( isValidCoord(enPassantRank,cFile) )
+                    interveningSquares.add( new Square(enPassantRank,cFile) );
+            }
+            
+            // check all pieces for captures or blocks
+            for( ChessPiece piece : mChessPieces )
+            {
+                if ( !piece.mIsActive || piece.mColor != color ) // skip is inactive or same color
+                    continue;
+                for (Square square : interveningSquares )
+                    if ( isMoveCodeLegal(piece.validateMove(square)) )
+                        return false;
+            }
+        }
+ 
+        //check for king moves
+        if ( king.hasValidMove() )
+            return false;
+        
+        return true;
     }
     
     /**
@@ -475,23 +561,7 @@ public class Chess
         return -1;
     }
     
-    public String getCompleteMoveHistory()
-    {
-        String history = "";
-        boolean whitesTurn = true;
-        for ( RecordOfMove item : mChessHistory )
-        {
-            if ( whitesTurn )
-                history += item.movePrefix;
-            history += item.moveText;
-            if ( whitesTurn )
-                history += " ";
-            else
-                history += "\n";
-            whitesTurn = !whitesTurn;
-        }
-        return history;
-    }
+    
     
     
     /* *************************************************
@@ -776,6 +846,13 @@ public class Chess
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
             
+            // DEBUG
+                System.out.println("playerStateCode: " + playerStateCode);
+            if ( check )
+                System.out.println(getColorString(opponentColor) +" is in Check!");
+            if ( checkmate )
+                System.out.println(getColorString(opponentColor) +" is in Checkmate!");
+            
             
             // add move to mChessHistory (pass coordinates of previous square)
             mChessHistory.add(new RecordOfMove(
@@ -804,6 +881,9 @@ public class Chess
          */
         public int validateMove(int rank, int file)
         {
+            // TODO: potential optimization: track validated moves
+            //       so moves don't need to be re-evaluated
+            
             if ( !isValidCoord(rank, file) )
                 throw new IllegalArgumentException("Invalid Coordinate");
             
@@ -899,6 +979,18 @@ public class Chess
             * @return true or false
             */
         abstract public int isObserving(int rank, int file);
+        
+        /**
+         * returns true if the piece has a valid move
+         * @return true or false
+         */
+        public boolean hasValidMove()
+        {
+            for ( Square square : getCandidateMoves() )
+                if ( isMoveCodeLegal( validateMove(square) ) )
+                    return true;
+            return false;
+        }
         
         /**
          * Gets all valid moves for this piece
@@ -1700,6 +1792,8 @@ public class Chess
         final public ChessPiece RookCastled;
         final public int fromRookRank, fromRookFile;
         
+        final public boolean checkmate;
+        
         /**
          * Gets a notational representation of the move
          * @return example: "1... e7 e5"
@@ -1747,6 +1841,8 @@ public class Chess
             RookCastled = null;
             fromRookRank = -1;
             fromRookFile = -1;
+            
+            this.checkmate = checkmate;
             
             moveNumber = getMoveNumber();
             if ( mWhoseTurn == WHITE )
@@ -1802,6 +1898,8 @@ public class Chess
             capturedFile = -1;
             PiecePromoted = null;
             promotionType = 'x';
+            
+            this.checkmate = checkmate;
             
             moveNumber = getMoveNumber();
             if ( mWhoseTurn == WHITE )
@@ -1884,6 +1982,36 @@ public class Chess
             for (int i = 0; i < 8; i++)
                 returnList.add(new Square(rank,i));
             return returnList;
+        }
+        
+        public static ArrayList<Square> getInterveningSquares(
+                int rank1, int file1, int rank2, int file2 )
+        {
+            // TODO: implement
+            ArrayList<Square> returnList = new ArrayList<>();
+            if ( !isValidCoord(rank1,file1) || !isValidCoord(rank2,file2) )
+                return returnList;
+            int rankDif = rank2 - rank1;
+            int fileDif = file2 - file1;
+            int rankDir = rankDif > 0 ? 1 : -1;
+            int fileDir = fileDif > 0 ? 1 : -1;
+            
+            if ( rank1 == rank2 ) {
+                for ( int file = file1; file != file2; file += fileDir)
+                    returnList.add(new Square(rank1,file));
+            } else if ( file1 == file2 ) {
+                for ( int rank = rank1; rank != rank2; rank += rankDir)
+                    returnList.add(new Square(rank,file1));
+            } else if ( abs( (double)(rankDif) / (double)(fileDif) ) == 1.0 ) {
+                int file = file1;
+                for ( int rank = rank1; rank != rank2; rank += rankDir)
+                {
+                    //add
+                    returnList.add(new Square(rank,file));
+                    file += fileDir;
+                }
+            }
+            return returnList;            
         }
     }
 }

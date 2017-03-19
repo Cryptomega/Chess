@@ -166,20 +166,20 @@ public class Chess
     
     public String getCompleteMoveHistory()
     {
-        String history = "";
+        StringBuilder history = new StringBuilder();
         boolean whitesTurn = true;
         for ( RecordOfMove item : mChessHistory )
         {
             if ( whitesTurn )
-                history += item.movePrefix;
-            history += item.moveText;
+                history.append( item.movePrefix );
+            history.append( item.moveText );
             if ( whitesTurn )
-                history += " ";
+                history.append( " ");
             else
-                history += "\n";
+                history.append(  "\n" );
             whitesTurn = !whitesTurn;
         }
-        return history;
+        return history.toString();
     }
     
     /**
@@ -1976,9 +1976,9 @@ public class Chess
                 movePrefix = String.valueOf(moveNumber) + "... ";
             
             if ( fromRookFile < movedFromFile  )
-                moveText = "0-0-0";
+                moveText = " 0-0-0";
             else
-                moveText = "0-0";
+                moveText = "   0-0";
         }
     }
     

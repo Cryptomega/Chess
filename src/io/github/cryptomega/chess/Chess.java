@@ -525,6 +525,14 @@ public class Chess
         return (rank+file)%2; 
     }
     
+    public static boolean isMoveCodeLegal(int code)
+    {
+        return code == MOVE_LEGAL
+                || code == MOVE_LEGAL_EN_PASSANT
+                || code == MOVE_LEGAL_CASTLE_KINGSIDE
+                || code == MOVE_LEGAL_CASTLE_QUEENSIDE ;
+    }
+    
     public static String getMoveCodeText(int code)
     {
         switch(code)
@@ -673,8 +681,23 @@ public class Chess
         {
             return makeMove(Chess.convertAlgebraicToInternalRank(coord),
                     Chess.convertAlgebraicToInternalFile(coord) );
-        }              
+        }
         
+        /**
+         * Makes a move given a target square
+         * @param square object representing target square
+         * @return move code
+         */
+        public int makeMove(Square square)
+        { return makeMove(square.rank, square.file); }
+        
+        /**
+         * Validates a move given a target square
+         * @param square object representing target square
+         * @return move code
+         */
+        public int validateMove(Square square)
+        { return validateMove(square.rank, square.file); }
         
         /**
          * MAKES THE MOVE! after validating the move by calling validateMove
@@ -876,6 +899,25 @@ public class Chess
             * @return true or false
             */
         abstract public int isObserving(int rank, int file);
+        
+        /**
+         * Gets all valid moves for this piece
+         * @return ArrayList of Square objects containing valid moves
+         */
+        public ArrayList<Square> getValidMoves()
+        {
+            ArrayList<Square> validMoves = new ArrayList<>();
+            if ( mColor != mWhoseTurn ) 
+                return validMoves;  //return empty if wrong turn
+            ArrayList<Square> candidateMoves = getCandidateMoves();
+            
+            for (Square square : candidateMoves)
+            {
+                if ( isMoveCodeLegal( validateMove(square) ) )
+                    validMoves.add(square);
+            }
+            return validMoves;
+        }
         
         /**
          * Gets a list of squares the piece might be able to move to

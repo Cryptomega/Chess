@@ -105,8 +105,8 @@ public class ChessDriver
             System.out.println("No piece there.");
             return;
         }
-        System.out.print("Printing candidate moves: ");
-        ArrayList<Chess.Square> list = piece.getCandidateMoves();
+        System.out.print("Printing valid moves: ");
+        ArrayList<Chess.Square> list = piece.getValidMoves();
         for (Chess.Square square: list)
         {
             System.out.print(square.toString() + ",");

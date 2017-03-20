@@ -68,21 +68,26 @@ public class Chess
     public static final int PLAYER_CLAIMS_DRAW  = 904;
     
     // Game states
-    public static final int STATUS_WHITES_TURN =             800;
+    public static final int STATUS_WHITES_TURN =             800; // in progress
     public static final int STATUS_BLACKS_TURN =             801;
-    public static final int STATUS_WHITE_WINS_CHECKMATE =    802;
-    public static final int STATUS_BLACK_WINS_CHECKMATE =    803;
-    public static final int STATUS_WHITE_WINS_TIME =         804;
-    public static final int STATUS_BLACK_WINS_TIME =         805;
+    public static final int STATUS_WHITE_IN_CHECK =          802;
+    public static final int STATUS_BLACK_IN_CHECK =          803;
+            
+    public static final int STATUS_WHITE_WINS_CHECKMATE =    804; // wins
+    public static final int STATUS_BLACK_WINS_CHECKMATE =    805;
     public static final int STATUS_WHITE_WINS_RESIGNATION =  806;
     public static final int STATUS_BLACK_WINS_RESIGNATION =  807;
-    public static final int STATUS_DRAW_WHITE_STALEMATE =    808;
-    public static final int STATUS_DRAW_BLACK_STALEMATE =    809;
-    public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810;
+    public static final int STATUS_WHITE_WINS_TIME =         808;
+    public static final int STATUS_BLACK_WINS_TIME =         809;
+    
+    public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810; // draws
     public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811;
     public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812;
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
     public static final int STATUS_DRAW_AGREEMENT =          814;
+    public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
+    public static final int STATUS_DRAW_BLACK_STALEMATE =    816;
+    
     
     /* ****************************************
      * * * Game State variables * * *
@@ -99,6 +104,32 @@ public class Chess
     
     private int mWhiteKingIndex = -1;
     private int mBlackKingIndex = -1;
+    
+    private void endTurn(int playerStateCode)
+    {
+        // DEBUG
+        System.out.println("endTurn called");
+        
+        // TODO: implement
+        
+        // mIsGameActive
+        
+        // mWhoseTurn
+        // switch turn to other player
+        mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+        
+        mTurnCount++;
+        
+        // mWhiteOfferingDraw
+        // mBlackOfferingDraw
+        
+        // checks for draw conditions
+        // updates game state for wins, draws
+        // transistions between turns
+        // updates and state variables
+        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES
+        // TODO: calls game state listeners
+    }
     
     
     /************************************************
@@ -499,12 +530,8 @@ public class Chess
                         return false;
             }
         }
- 
         //check for king moves
-        if ( king.hasValidMove() )
-            return false;
-        
-        return true;
+        return !king.hasValidMove();
     }
     
     /**
@@ -641,6 +668,10 @@ public class Chess
                 return "White's turn.";
             case STATUS_BLACKS_TURN:
                 return "Black's turn.";
+            case STATUS_WHITE_IN_CHECK:
+                return "White is in check!";
+            case STATUS_BLACK_IN_CHECK:
+                return "Black is in check!";
             case STATUS_WHITE_WINS_CHECKMATE:
                 return "White wins by checkmate!";
             case STATUS_BLACK_WINS_CHECKMATE:
@@ -903,7 +934,7 @@ public class Chess
             int fromFile = mFile;
             
             // set the new position and update mChessBoard
-            updatePosition(rank, file);
+            updateChessPiece(rank, file);
             
             // if we de-abstract this function, override this function
             // for king and pawn class to handle pawn promotions and castling
@@ -931,12 +962,12 @@ public class Chess
                     check, checkmate        ) );
             
             // TODO: call EndTurn()
-            // increment mTurnCount and mMoveCount
-            mTurnCount++;
-            mMoveCount++;
+            endTurn(playerStateCode);
+
             
-            // switch turn to other player
-            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+            
+            
+            
  
             return code;
         }
@@ -1001,6 +1032,7 @@ public class Chess
             mIsActive = false;
             mStatus = PIECE_CAPTURED;
             mChessBoard[mRank][mFile] = null;
+            // TODO: call chess piece listener function
         }
                 
         
@@ -1038,6 +1070,18 @@ public class Chess
             // set the position in the piece
             mRank = rank;
             mFile = file;
+        }
+        
+        protected void updateChessPiece(int rank, int file)
+        {
+            // TODO: call piece lisener update function
+            
+            // DEBUG:
+            System.out.println("Calling updateChessPiece");
+            
+            // increment move counter
+            mMoveCount++;
+            updatePosition(rank, file);
         }
         
            /**
@@ -1204,8 +1248,8 @@ public class Chess
             
 
             // update king and rook
-            updatePosition(fromRank, toKingFile);
-            castlingRook.updatePosition(fromRookRank, toRookFile);
+            updateChessPiece(fromRank, toKingFile);
+            castlingRook.updateChessPiece(fromRookRank, toRookFile);
             
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( mColor == WHITE ) ? BLACK : WHITE;
@@ -1220,12 +1264,7 @@ public class Chess
                     check, checkmate        ) );
 
             
-            // increment mTurnCount and mMoveCount
-            mTurnCount++;
-            mMoveCount++;
-            
-            // switch turn to other player
-            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
+            endTurn(playerStateCode);
             
             return code;
         }
@@ -1636,7 +1675,7 @@ public class Chess
             int fromFile = mFile;
             
             // set the new position and update mChessBoard
-            updatePosition(rank, file);
+            updateChessPiece(rank, file);
             
             if ( promotion != null )
             {
@@ -1664,13 +1703,8 @@ public class Chess
                     check, checkmate        ) );
             
             
-            // increment mTurnCount and mMoveCount
-            mTurnCount++;
-            mMoveCount++;
+            endTurn(playerStateCode);
             
-            // switch turn to other player
-            mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
- 
             return code;
         }
         
@@ -2002,6 +2036,7 @@ public class Chess
             this.file = file;
         }
         
+        @Override
         public String toString()
         { return Chess.convertInternalToAlgebraic(rank, file); }
         

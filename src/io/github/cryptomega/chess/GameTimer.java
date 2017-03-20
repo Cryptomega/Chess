@@ -4,7 +4,7 @@
 package io.github.cryptomega.chess;
 
 //import io.github.cryptomega.chess.Chess.TimerCallbackReceiver;
-import io.github.cryptomega.chess.Chess.TimerController;
+import io.github.cryptomega.chess.Game.TimerController;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -22,23 +22,32 @@ public class GameTimer implements TimerController
     private double mWhiteTimeLeftSecs;
     private double mBlackTimeLeftSecs;
     
-    private final Chess mGameInstance;  // Chess game instance
+    private final Game mGameInstance;  // Chess game instance
     
     private Timer mTimer = null;
     private int mUpdateDelayMillisec = 100;
     
-    private double mUpdateDelaySecs;
+    //private double mUpdateDelaySecs;
 
     /**
      * Creates the game timer. 
      * @param game A reference to the game object
      */
-    GameTimer(Chess game)
+    GameTimer(Game game)
     {   mGameInstance = game; }
 
     
     // TODO: add public method to manually set a player's remaining time
-    // TODO: add public method to set mUpdateDelayMillisec
+
+    /**
+     * public method to set mUpdateDelayMillisec
+     * @param millisecs millisecond refresh rate for chess time
+     */
+    public void setUpdateDelay(int millisecs)
+    {   if ( millisecs <= 0 )
+            return;
+        mUpdateDelayMillisec = millisecs; 
+    }
     
     
     
@@ -68,13 +77,13 @@ public class GameTimer implements TimerController
         
         switch (mActivePlayer)
         {
-            case Chess.WHITE:
+            case Game.WHITE:
                 mWhiteTimeLeftSecs += (double)mIncrementSecs;
-                mActivePlayer = Chess.BLACK;
+                mActivePlayer = Game.BLACK;
                 break;
-            case Chess.BLACK:
+            case Game.BLACK:
                 mBlackTimeLeftSecs += (double)mIncrementSecs;
-                mActivePlayer = Chess.WHITE;
+                mActivePlayer = Game.WHITE;
                 break;
             default:
                 return;
@@ -112,11 +121,11 @@ public class GameTimer implements TimerController
         double remaining;
         switch (mActivePlayer)
         {
-            case Chess.WHITE:
+            case Game.WHITE:
                 mWhiteTimeLeftSecs -= mUpdateDelaySecs;
                 remaining = mWhiteTimeLeftSecs;
                 break;
-            case Chess.BLACK:
+            case Game.BLACK:
                 mBlackTimeLeftSecs -= mUpdateDelaySecs;
                 remaining = mBlackTimeLeftSecs;
                 break;

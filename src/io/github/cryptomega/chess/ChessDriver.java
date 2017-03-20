@@ -3,7 +3,7 @@
  */
 package io.github.cryptomega.chess;
 
-import io.github.cryptomega.chess.Chess.ChessPiece;
+import io.github.cryptomega.chess.Game.ChessPiece;
 import java.util.ArrayList;
 //import java.util.ArrayList;
 //import java.util.Arrays;
@@ -14,7 +14,7 @@ import java.util.Scanner;
  *
  * @author Philip
  */
-public class ChessDriver implements Chess.GameListener
+public class ChessDriver implements Game.GameListener
 {
     /**
      * @param args the command line arguments
@@ -22,7 +22,7 @@ public class ChessDriver implements Chess.GameListener
     public static void main(String[] args)
     {
         // setup and start the chess game
-        Chess chess = new Chess();
+        Game chess = new Game();
         chess.setupGame();
         chess.startGame();
         
@@ -82,9 +82,9 @@ public class ChessDriver implements Chess.GameListener
             if ( input.length() == 2 )
             {
                 // get moves for piece
-                int rank = Chess.convertAlgebraicToInternalRank(input);
-                int file = Chess.convertAlgebraicToInternalFile(input);
-                if ( !Chess.isValidCoord(rank,file) )
+                int rank = Game.convertAlgebraicToInternalRank(input);
+                int file = Game.convertAlgebraicToInternalFile(input);
+                if ( !Game.isValidCoord(rank,file) )
                     System.out.println(" > > > ERROR: Invalid location < < <");
                 ChessPiece piece = board[rank][file];
                 printCandidateMoves(piece);
@@ -102,12 +102,12 @@ public class ChessDriver implements Chess.GameListener
             // System.out.println( chess.getCompleteMoveHistory() );
             
             // DEBUG System.out.println("\n");
-            if ( code != Chess.MOVE_LEGAL )
+            if ( code != Game.MOVE_LEGAL )
                 System.out.println(" > > > " 
-                        + Chess.getMoveCodeText(code)
+                        + Game.getMoveCodeText(code)
                         + " ("+code+") < < <");
             else
-                System.out.println(Chess.getMoveCodeText(code));
+                System.out.println(Game.getMoveCodeText(code));
             //break; // DEBUG
         }
 
@@ -117,7 +117,7 @@ public class ChessDriver implements Chess.GameListener
     /*******************************************************************
      * ************     Quick Game PieceListener     *******************
      ***************************************************************** */
-    public static class PieceListener implements Chess.PieceListener
+    public static class PieceListener implements Game.PieceListener
     {
 
         @Override
@@ -155,8 +155,8 @@ public class ChessDriver implements Chess.GameListener
             return;
         }
         System.out.print("Printing valid moves: ");
-        ArrayList<Chess.Square> list = piece.getValidMoves();
-        for (Chess.Square square: list)
+        ArrayList<Game.Square> list = piece.getValidMoves();
+        for (Game.Square square: list)
         {
             System.out.print(square.toString() + ",");
         }
@@ -174,14 +174,14 @@ public class ChessDriver implements Chess.GameListener
             {
                 if ( board[i][j] == null )
                 {
-                    if ( Chess.getSquareColor(i,j) == Chess.WHITE )
+                    if ( Game.getSquareColor(i,j) == Game.WHITE )
                         System.out.print('\u2001');
                     else    // black 
                         System.out.print('\u2591');
                 } else {
                     System.out.print(board[i][j].getUnicode());
                 }
-                if ( Chess.getSquareColor(i,j) == Chess.WHITE )
+                if ( Game.getSquareColor(i,j) == Game.WHITE )
                 {   //white
                     System.out.print(" \u2502 ");
                 } else { // black
@@ -228,14 +228,14 @@ public class ChessDriver implements Chess.GameListener
     }
 
     @Override
-    public void onGameStateUpdate(Chess.GameStateUpdate update)
+    public void onGameStateUpdate(Game.GameStateUpdate update)
     {
         System.out.println("[GSListener]Code(" 
                 + update.gameStateCode + "): " + update.gameState);
     }
     
     @Override
-    public void onGameOver( Chess.GameStateUpdate update )
+    public void onGameOver( Game.GameStateUpdate update )
     {
         System.out.println();
         System.out.println("***********************************");

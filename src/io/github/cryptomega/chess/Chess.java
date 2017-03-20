@@ -5,6 +5,8 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
+//import org.springframework.util.StopWatch;
+
 
 /**
  *  Chess
@@ -12,7 +14,7 @@ import java.util.ArrayList;
  *  setupGame() and startGame(). 
  * @author Philip Schexnayder
  */
-public class Chess 
+public class Chess              // TODO: consider refractoring to ...cryptomega.chess.Game
 {
     /* ****************************************
      * * * * Declare constants * * *
@@ -67,24 +69,24 @@ public class Chess
     public static final int PLAYER_IN_STALEMATE = 903;
     public static final int PLAYER_CLAIMS_DRAW  = 904;
     
-    // Game states
-    public static final int STATUS_WHITES_TURN =             800; // in progress
+    // * * * Game states * * *
+    public static final int STATUS_WHITES_TURN =             800; // Game in Progress
     public static final int STATUS_BLACKS_TURN =             801;
     public static final int STATUS_WHITE_IN_CHECK =          802;
     public static final int STATUS_BLACK_IN_CHECK =          803;
             
     public static final int STATUS_WHITE_WINS_CHECKMATE =    804; // wins
     public static final int STATUS_BLACK_WINS_CHECKMATE =    805;
-    public static final int STATUS_WHITE_WINS_RESIGNATION =  806;
+    public static final int STATUS_WHITE_WINS_RESIGNATION =  806; // TODO
     public static final int STATUS_BLACK_WINS_RESIGNATION =  807;
     public static final int STATUS_WHITE_WINS_TIME =         808;
     public static final int STATUS_BLACK_WINS_TIME =         809;
     
     public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810; // draws
-    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811;
-    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812;
+    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811; // TODO
+    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
-    public static final int STATUS_DRAW_AGREEMENT =          814;
+    public static final int STATUS_DRAW_AGREEMENT =          814; // TODO
     public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    816;
     
@@ -97,8 +99,8 @@ public class Chess
     private int mGameState;
     
     private int mTurnCount;
-    private boolean mWhiteOfferingDraw;
-    private boolean mBlackOfferingDraw;
+    private boolean mWhiteOffersOrClaimsDraw;
+    private boolean mBlackOffersOrClaimsDraw;
     //private boolean mInEditMode = false;
     //private boolean mInAnalysisMode = false;
     //private boolean mIsChess960 = false;
@@ -106,16 +108,26 @@ public class Chess
     private int mWhiteKingIndex = -1;
     private int mBlackKingIndex = -1;
     
+    // time variables
+    private int mStartingMinutes = 15;
+    private int mOnMoveIncrementSeconds = 5;
+    private boolean mIsTimedGame = true;
+    private boolean mUseStandardTimer = true;
+    private TimerController mTimer = null;
+    private double mWhiteTimeLeft;  // time left in seconds
+    private double mBlackTimeLeft;  // time left in seconds
+    
     /**
      * Makes end of turn game state updates, as well as check
      * for end of game conditions. 
      * @param nextPlayerState contains the player state code of the
-     *          player who's turn is about to begin
+     *          player who's turn is about to begin. Alternatively 
+     *          it can take a Game State code 
      */
     private void endTurn(int nextPlayerState)
     {
         // DEBUG
-        System.out.println("endTurn called");
+        //System.out.println("endTurn called");
         
         switch (nextPlayerState)
         {
@@ -137,6 +149,14 @@ public class Chess
                         STATUS_DRAW_BLACK_STALEMATE : STATUS_DRAW_WHITE_STALEMATE;
                 mIsGameActive = false;
                 break;
+            case STATUS_WHITE_WINS_TIME:
+                mGameState = STATUS_WHITE_WINS_TIME;
+                mIsGameActive = false;
+                break;
+            case STATUS_BLACK_WINS_TIME:
+                mGameState = STATUS_BLACK_WINS_TIME;
+                mIsGameActive = false;
+                break;
         }
         
         // TODO: implement
@@ -149,8 +169,17 @@ public class Chess
         mTurnCount++;
         
         // switch over clock
+        if( mIsTimedGame && mTimer != null )
+        {
+            if ( mIsGameActive )
+                mTimer.switchTimer();
+            else
+                mTimer.stopTimer();
+        }
         
-        // TODO: implement drawing
+            
+         
+        // TODO: implement draws
         
         // mWhiteOfferingDraw
         // mBlackOfferingDraw
@@ -160,7 +189,12 @@ public class Chess
         // transistions between turns
         // updates and state variables
         // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES
+        
         // TODO: calls game state listeners
+        if ( mIsGameActive )
+            pushGameStateUpdate();
+        else
+            pushGameOverUpdate();
     }
     
     
@@ -186,6 +220,9 @@ public class Chess
     private final ArrayList<RecordOfMove> mChessHistory;
     
     
+    // Game State Listeners
+    private ArrayList<GameListener> mGameStateListeners;
+    
     /* *************************************************
      * * * * Constructor * * * 
      **************************************************/
@@ -193,6 +230,8 @@ public class Chess
     {
         mChessPieces = new ArrayList<>();
         mChessHistory = new ArrayList<>();
+        mGameStateListeners = new ArrayList<>();
+        
         clearGame();
     }
     
@@ -206,13 +245,16 @@ public class Chess
     public int whoseTurn() { return mWhoseTurn; }
     public int getMoveNumber() { return (2 + mTurnCount) / 2; }
     
+    public double getSecondsRemaining(int color)
+    { return ( color ==  WHITE ) ? mWhiteTimeLeft : mBlackTimeLeft; }
+    
     public String getGameStatus() { return getGameStatusText(mGameState); }
     
     /**
      * Get the chess board with references to the active pieces on it
      * @return Returns a 2d array of ChessPiece
      */
-    public ChessPiece[][] getBoard() 
+    public ChessPiece[][] getBoard()
         { 
             ChessPiece[][] copy = new ChessPiece[8][8];
             for (int i = 0; i < 8; i++)
@@ -229,6 +271,21 @@ public class Chess
     
     //public void restartGame() {}  // TODO: implement? might not be useful
     
+    /**
+     * Adds a game state listener.
+     * @param listener implements GameListener interface
+     */
+    public void addGameStateListener(GameListener listener)
+    { mGameStateListeners.add(listener); }
+    
+
+
+    
+    /**
+     * Gets the move history 
+     * @return a String containing all the moves, 
+     *         one line per turn
+     */
     public String getCompleteMoveHistory()
     {
         StringBuilder history = new StringBuilder();
@@ -255,14 +312,28 @@ public class Chess
     public final void clearGame()
     {
         // reset game variables
-        mWhiteOfferingDraw = false;
-        mBlackOfferingDraw = false;
+        mWhiteOffersOrClaimsDraw = false;
+        mBlackOffersOrClaimsDraw = false;
         mIsGameActive = false;  
         mTurnCount = 0;
         mWhoseTurn = WHITE;
         mGameState = STATUS_WHITES_TURN;
         mWhiteKingIndex = -1;
         mBlackKingIndex = -1;
+        mWhiteTimeLeft = mStartingMinutes*60;
+        mBlackTimeLeft = mStartingMinutes*60;
+        
+        // initialize timer
+        
+        // setGameTimer( new ChessGameTimerClass ) // TODO: make this timer class
+        if ( mIsTimedGame )
+            setGameTimer(new GameTimer(this) );
+        
+        if ( mTimer != null )
+        {
+            mTimer.initTimer(mStartingMinutes, mOnMoveIncrementSeconds, WHITE);
+        }
+        
         
         // clear game board
         for (int i = 0; i < 8; i++)
@@ -287,7 +358,7 @@ public class Chess
         // TODO: consider requiring mIsGameActive to be false 
         //if ( mIsGameActive == true )
         //    throw new IllegalStateException("Cannot add piece while game is active");
-        clearGame();
+        //clearGame();
        
         
 
@@ -325,6 +396,56 @@ public class Chess
         mIsGameActive = true;
     }
     
+    /**
+     * Manually end the game
+     */
+    public void endGame()
+    {
+        mIsGameActive = false;
+        
+        if ( mTimer != null )
+            mTimer.stopTimer();
+            
+    }
+    
+    /**
+     * Sets the starting time. passing 0,0 disables the timer
+     * @param startingMins
+     * @param incrementSecs 
+     */
+    public void setStartTime(int startingMins, int incrementSecs)
+    {
+        if ( mIsGameActive )
+            return; // cannot change if game is in progress
+        
+        mStartingMinutes = startingMins;
+        mOnMoveIncrementSeconds = incrementSecs;
+        mWhiteTimeLeft = mStartingMinutes*60;
+        mBlackTimeLeft = mStartingMinutes*60;
+        mIsTimedGame = !(startingMins == 0 && incrementSecs == 0);
+        
+        if ( mTimer != null )
+            mTimer.initTimer(startingMins, incrementSecs, mWhoseTurn);
+    }
+    
+    
+    
+    
+    
+    /**
+     * Change the default timer
+     * @param timer a timer object which implements Chess.TimerController
+     */
+    public void setGameTimer(TimerController timer)
+    {   mUseStandardTimer = false; 
+        if ( mIsGameActive )
+            return; // cannot change timer while game is active
+        
+        if ( this.mTimer != null )   // in case a timer is already running
+            this.mTimer.stopTimer(); // for some reason
+        
+        this.mTimer = timer; 
+    }
     
     
     /**
@@ -495,6 +616,49 @@ public class Chess
     /* *************************************************
      * * * * Private Methods * * * 
      * *************************************************/
+    
+    /**
+     * Method called by game timer to update the remaining timer
+     * @param playerColor color of player to upgrade time
+     * @param timerRemaining remaining time in seconds
+     */
+    void updateTimer(int playerColor, double timeRemaining)
+    {
+        // TODO: implement
+        if ( playerColor == WHITE )
+            mWhiteTimeLeft = timeRemaining;  // time left in seconds
+        else if ( playerColor == BLACK )
+            mBlackTimeLeft = timeRemaining;  // time left in seconds
+        
+        //  check if player has run out of timer
+        if ( mIsGameActive && timeRemaining <= 0.0 )
+        {
+            // call endTurn with proper out of time code
+            if ( playerColor == WHITE )
+                endTurn(STATUS_BLACK_WINS_TIME);
+            else if ( playerColor == BLACK )
+                endTurn(STATUS_WHITE_WINS_TIME);
+        } 
+    }
+    
+    
+        /**
+     * pushes an update of the game state to all game state listeners
+     */
+    private void pushGameStateUpdate()
+    { for (GameListener listener : mGameStateListeners)
+            listener.onGameStateUpdate(new GameStateUpdate()); 
+    }
+    
+    /**
+     * pushes an update of the game state to all game state listeners
+     */
+    private void pushGameOverUpdate()
+    { for (GameListener listener : mGameStateListeners)
+            listener.onGameOver(new GameStateUpdate()); 
+    }
+
+     // *****************************************************************
 
     /**
      * Assumes king is in check, and checks for checkmate
@@ -953,7 +1117,6 @@ public class Chess
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL ) return code;
             
-            // switch timer
             
             
             // capture piece, if any
@@ -1066,7 +1229,7 @@ public class Chess
             mChessBoard[mRank][mFile] = null;
             // TODO: call chess piece listener function
             // DEBUG:
-            System.out.println(this.getName()+ " has been captured!");
+            //System.out.println(this.getName()+ " has been captured!");
         }
                 
         
@@ -1111,7 +1274,7 @@ public class Chess
             // TODO: call piece lisener update function
             
             // DEBUG:
-            System.out.println("Calling updateChessPiece");
+            //System.out.println("Calling updateChessPiece");
             
             // increment move counter
             mMoveCount++;
@@ -1263,8 +1426,7 @@ public class Chess
             int code = validateCastle(rank, file);
             if ( code != MOVE_LEGAL_CASTLE_KINGSIDE &&
                     code != MOVE_LEGAL_CASTLE_QUEENSIDE ) return code;
-     
-            // TODO: switch timer
+    
             
             // get rook
             ChessPiece castlingRook = getCastlingRook(rank,file);
@@ -1681,7 +1843,6 @@ public class Chess
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL && code != MOVE_LEGAL_EN_PASSANT ) return code;
             
-            // switch timer
             
             ChessPiece promotion = null;
             // check for promotion
@@ -1904,8 +2065,9 @@ public class Chess
     /** *****************************************************
      * ChessMove object for keeping track of game history
      *********************************************************/
-    private class RecordOfMove
+    public class RecordOfMove
     {
+        // TODO: consider moving RecordOfMove outside of Chess class
         final public int moveNumber;
         final public String movePrefix; // "1. " or "1... "
         final public String moveText;   // Readable move notation
@@ -1948,7 +2110,7 @@ public class Chess
          * @param check true opponent is being checked
          * @param checkmate true if opponent is being mated
          */
-        public RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
+        private RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
                 ChessPiece captured, ChessPiece promo, 
                 boolean check, boolean checkmate)
         {
@@ -2013,7 +2175,7 @@ public class Chess
          * @param check true opponent is being checked
          * @param checkmate true if opponent is being mated
          */
-        public RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
+        private RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
                 ChessPiece castledRook, int fromRookRank, int fromRookFile,
                 boolean check, boolean checkmate)
         {
@@ -2151,8 +2313,120 @@ public class Chess
         }
     }
     
+    
+    /** *****************************************************
+     * Game State Listener
+     *********************************************************/
     public static interface GameListener
     {
-        abstract public void onGameStateUpdate( int GameStateCode );
+        /**
+         * Call back listener. This function is called every time a move 
+         * is made, and also when the game ends if onGameOver is not implemented.
+         * @param update is a GameStateUpdate object 
+         */
+        abstract public void onGameStateUpdate( GameStateUpdate update );
+        
+        /**
+         * This function is called when the game ends;
+         * @param update is a GameStateUpdate object 
+         */
+        default public void onGameOver( GameStateUpdate update )
+        { onGameStateUpdate( update ); }
     }
+    
+    /** *****************************************************
+     * Helper class for Game State Listener
+     *********************************************************/
+    public final class GameStateUpdate
+    {
+        /**
+         *
+         */
+        public RecordOfMove move;
+        public boolean isGameActive;
+        public int gameStateCode;
+        public String gameState;
+        
+        /**
+         * Packages information about the current game state
+         * to be sent to game state listeners
+         */
+        private GameStateUpdate()
+        {
+            // TODO: package more information to send to listener
+            gameStateCode = mGameState;
+            gameState = Chess.getGameStatusText(mGameState);
+            isGameActive = mIsGameActive;
+            move = mChessHistory.get( mChessHistory.size() - 1 );
+        }
+    }
+    
+    /** *****************************************************
+     * Chess Timer Interface
+     *********************************************************/
+    public interface TimerController
+    {
+        /**
+         * Called when game is being set up to initialize the timer.
+         * Call Chess.updateTimer(int playerColor, double timeRemaining) 
+         *  to publish updates the player's remaining time
+         * @param startingMins starting time in minutes
+         * @param incrementSecs per turn increment time in seconds
+         * @param initPlayerColor player which moves first, starting the game timer
+         */
+        public void initTimer(int startingMins, int incrementSecs, int initPlayerColor);
+        
+        /**
+         * Called after each move to switch the active player
+         */
+        public void switchTimer();
+        
+        /**
+         * Called on Game Over to stop the active timer
+         */
+        public void stopTimer();
+        
+    }
+    
+    
+
+    // TODO: implement Piece Listener
+    /** *****************************************************
+     * TODO: implement Piece Listener
+     *********************************************************/
+    public interface PieceListener
+    {
+        /**
+         * Callback on some update to piece
+         * @param piece reference to the updated piece
+         */
+        abstract public void onUpdate(ChessPiece piece);
+        
+        /**
+         * Callback for move
+         * @param piece reference to the moved piece
+         */
+        default public void onMove(ChessPiece piece)
+        { onUpdate(piece); }
+        
+        /**
+         * Callback for capture
+         * @param piece reference to the captured piece
+         */
+        default public void onCapture(ChessPiece piece)
+        { onUpdate(piece); }
+        
+        /**
+         * Callback for pawn promotion
+         * @param piece reference to the pawn promoted
+         * @param promoted reference to the new piece
+         */
+        default public void onPromote(ChessPiece piece, ChessPiece promoted)
+        { onUpdate(piece); }
+    }
+    
+ 
 }
+
+
+        

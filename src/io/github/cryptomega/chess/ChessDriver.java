@@ -14,7 +14,7 @@ import java.util.Scanner;
  *
  * @author Philip
  */
-public class ChessDriver 
+public class ChessDriver implements Chess.GameListener
 {
     /**
      * @param args the command line arguments
@@ -26,10 +26,15 @@ public class ChessDriver
         chess.setupGame();
         chess.startGame();
         
+        // register listener
+        chess.addGameStateListener(new ChessDriver());
+        
         // input string variable
         String input;
         Scanner scanner = new Scanner(System.in);
         
+        // DEBUG
+         /*
         chess.makeMove("e2 e4");
         chess.makeMove("e7 e5");
         chess.makeMove("g1 f3");
@@ -40,11 +45,15 @@ public class ChessDriver
         chess.makeMove("d7 d6");
         chess.makeMove("f3 h4");
         chess.makeMove("f6 h5");
-        
+        //*/
         
         // game loop
         while ( true )
         {
+            if ( !chess.isGameActive() )
+                System.out.print("GAME OVER: ");
+            System.out.println(chess.getGameStatus());
+            
             ChessPiece[][] board = chess.getBoard();
             printBoard(board);
             
@@ -59,7 +68,10 @@ public class ChessDriver
             input = scanner.nextLine();
 
             if ( input.equals("00") )
+            {
+                chess.endGame();
                 break;       // exit
+            }
             
             int code;
             
@@ -97,6 +109,36 @@ public class ChessDriver
 
 
     }
+    
+    public static class PieceListener implements Chess.PieceListener
+    {
+
+        @Override
+        public void onUpdate(ChessPiece piece)
+        {
+            System.out.println("[GPL]"+piece.getName() + " has updated.");
+        }
+
+        @Override
+        public void onMove(ChessPiece piece)
+        {
+            System.out.println("[GPL]"+piece.getName() + " has moved.");
+        }
+
+        @Override
+        public void onCapture(ChessPiece piece)
+        {
+            System.out.println("[GPL]"+piece.getName() + " has been captured.");
+        }
+
+        @Override
+        public void onPromote(ChessPiece piece, ChessPiece promoted)
+        {
+            System.out.println("[GPL]"+piece.getName() + " has promoted.");
+        }
+        
+    }
+    
 
     public static void printCandidateMoves(ChessPiece piece)
     {
@@ -176,5 +218,12 @@ public class ChessDriver
         for (int i = 0; i < 7; i++)
             System.out.print("-\u2500-\u2534");
         System.out.println("-\u2500-\u2518");
+    }
+
+    @Override
+    public void onGameStateUpdate(Chess.GameStateUpdate update)
+    {
+        System.out.println("[GSListener]Code(" 
+                + update.gameStateCode + "): " + update.gameState);
     }
 }

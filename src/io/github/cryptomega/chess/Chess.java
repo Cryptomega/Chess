@@ -94,6 +94,7 @@ public class Chess
      * ****************************************/
     private boolean mIsGameActive;
     private int mWhoseTurn;
+    private int mGameState;
     
     private int mTurnCount;
     private boolean mWhiteOfferingDraw;
@@ -105,20 +106,51 @@ public class Chess
     private int mWhiteKingIndex = -1;
     private int mBlackKingIndex = -1;
     
-    private void endTurn(int playerStateCode)
+    /**
+     * Makes end of turn game state updates, as well as check
+     * for end of game conditions. 
+     * @param nextPlayerState contains the player state code of the
+     *          player who's turn is about to begin
+     */
+    private void endTurn(int nextPlayerState)
     {
         // DEBUG
         System.out.println("endTurn called");
+        
+        switch (nextPlayerState)
+        {
+            case PLAYER_OK:
+                mGameState = (mWhoseTurn == WHITE) ? 
+                        STATUS_BLACKS_TURN : STATUS_WHITES_TURN;
+                break;
+            case PLAYER_IN_CHECK:
+                mGameState = (mWhoseTurn == WHITE) ? 
+                        STATUS_BLACK_IN_CHECK : STATUS_WHITE_IN_CHECK;
+                break;
+            case PLAYER_IN_CHECKMATE:
+                mGameState = (mWhoseTurn == WHITE) ? 
+                        STATUS_WHITE_WINS_CHECKMATE : STATUS_BLACK_WINS_CHECKMATE;
+                mIsGameActive = false;
+                break;
+            case PLAYER_IN_STALEMATE:
+                mGameState = (mWhoseTurn == WHITE) ? 
+                        STATUS_DRAW_BLACK_STALEMATE : STATUS_DRAW_WHITE_STALEMATE;
+                mIsGameActive = false;
+                break;
+        }
         
         // TODO: implement
         
         // mIsGameActive
         
-        // mWhoseTurn
+
         // switch turn to other player
         mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
-        
         mTurnCount++;
+        
+        // switch over clock
+        
+        // TODO: implement drawing
         
         // mWhiteOfferingDraw
         // mBlackOfferingDraw
@@ -174,6 +206,8 @@ public class Chess
     public int whoseTurn() { return mWhoseTurn; }
     public int getMoveNumber() { return (2 + mTurnCount) / 2; }
     
+    public String getGameStatus() { return getGameStatusText(mGameState); }
+    
     /**
      * Get the chess board with references to the active pieces on it
      * @return Returns a 2d array of ChessPiece
@@ -221,12 +255,12 @@ public class Chess
     public final void clearGame()
     {
         // reset game variables
-        mIsGameActive = false;
         mWhiteOfferingDraw = false;
         mBlackOfferingDraw = false;
         mIsGameActive = false;  
         mTurnCount = 0;
         mWhoseTurn = WHITE;
+        mGameState = STATUS_WHITES_TURN;
         mWhiteKingIndex = -1;
         mBlackKingIndex = -1;
         
@@ -540,8 +574,6 @@ public class Chess
     private ChessPiece addPieceToGame(int color, char type)
     {
         type = Character.toUpperCase(type);
-        //if ( mIsGameActive == true )
-        //    throw new IllegalStateException("Cannot add piece while game is active");
         if ( color != WHITE && color != BLACK )
             throw new IllegalArgumentException("Invalid color argument");
         ChessPiece newPiece;
@@ -1033,6 +1065,8 @@ public class Chess
             mStatus = PIECE_CAPTURED;
             mChessBoard[mRank][mFile] = null;
             // TODO: call chess piece listener function
+            // DEBUG:
+            System.out.println(this.getName()+ " has been captured!");
         }
                 
         
@@ -2115,5 +2149,10 @@ public class Chess
             }
             return returnList;            
         }
+    }
+    
+    public static interface GameListener
+    {
+        abstract public void onGameStateUpdate( int GameStateCode );
     }
 }

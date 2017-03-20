@@ -109,8 +109,8 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
     private int mBlackKingIndex = -1;
     
     // time variables
-    private int mStartingMinutes = 15;
-    private int mOnMoveIncrementSeconds = 5;
+    private int mStartingMinutes = 1;
+    private int mOnMoveIncrementSeconds = 0;
     private boolean mIsTimedGame = true;
     private boolean mUseStandardTimer = true;
     private TimerController mTimer = null;
@@ -128,7 +128,8 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
     {
         // DEBUG
         //System.out.println("endTurn called");
-        
+
+        // updates and state variables
         switch (nextPlayerState)
         {
             case PLAYER_OK:
@@ -159,12 +160,9 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
                 break;
         }
         
-        // TODO: implement
-        
-        // mIsGameActive
-        
+        // TODO: implement more game state checks
 
-        // switch turn to other player
+        // transitions turn turn to other player
         mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
         mTurnCount++;
         
@@ -179,18 +177,21 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
         
             
          
-        // TODO: implement draws
+        // TODO: implement draws claim check
+        //      if player wants to claim draw,
+        //      check three fold repetition
+        //      check last fifty moves
         
         // mWhiteOfferingDraw
         // mBlackOfferingDraw
         
         // checks for draw conditions
         // updates game state for wins, draws
-        // transistions between turns
-        // updates and state variables
+
+
         // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES
         
-        // TODO: calls game state listeners
+        // calls game state listeners
         if ( mIsGameActive )
             pushGameStateUpdate();
         else
@@ -324,15 +325,11 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
         mBlackTimeLeft = mStartingMinutes*60;
         
         // initialize timer
-        
-        // setGameTimer( new ChessGameTimerClass ) // TODO: make this timer class
         if ( mIsTimedGame )
             setGameTimer(new GameTimer(this) );
-        
         if ( mTimer != null )
-        {
             mTimer.initTimer(mStartingMinutes, mOnMoveIncrementSeconds, WHITE);
-        }
+        
         
         
         // clear game board
@@ -355,12 +352,12 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
      */
     public void setupGame()
     {
-        // TODO: consider requiring mIsGameActive to be false 
-        //if ( mIsGameActive == true )
-        //    throw new IllegalStateException("Cannot add piece while game is active");
+        // require mIsGameActive to be false 
+        if ( mIsGameActive == true )
+            throw new IllegalStateException("Cannot add piece while game is active");
         //clearGame();
-       
         
+        // TODO: consider calling a method removeAllPieces()
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
@@ -559,7 +556,6 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
     
     public int checkPlayerState(int color)
     {
-        // TODO: impement
         // check for check, checkmate, stalemate, or draw
         ChessPiece king = getKing(color);
         boolean playerInCheck = isInCheck(color);
@@ -571,7 +567,6 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
                 return PLAYER_IN_CHECKMATE;        
         } else {
         
-            // TODO:
             // check for stalemate
             boolean playerHasValidMove = false;
             for ( ChessPiece piece : mChessPieces )
@@ -590,9 +585,7 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             
         }
 
-        // if player wants to claim draw,
-        //      check three fold repetition
-        //      check last fifty moves
+
 
         /*
         return codes:
@@ -624,7 +617,6 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
      */
     void updateTimer(int playerColor, double timeRemaining)
     {
-        // TODO: implement
         if ( playerColor == WHITE )
             mWhiteTimeLeft = timeRemaining;  // time left in seconds
         else if ( playerColor == BLACK )
@@ -1028,13 +1020,23 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
         protected boolean mIsActive = false;
         protected int mMoveCount = 0;
         
+        protected ArrayList<PieceListener> mPieceListeners;
+        
         protected ChessPiece(int color, char type)
         {
+            mPieceListeners = new ArrayList<>();
             if ( color != WHITE && color != BLACK ) // validate color 
                 throw new IllegalArgumentException("Invalid color.");
             mColor = color;
             mType = type;
         }
+        
+        /**
+         * Adds a listener to receive update callback from the piece
+         * @param listener 
+         */
+        public void addPieceListener(PieceListener listener)
+        { mPieceListeners.add(listener); }
         
         /**
          * Makes a move given the algebraic coordinate of target square
@@ -1089,18 +1091,6 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
          */
         public int makeMove(int rank, int file)
         {
-            
-           
-            // DEBUG printout
-            /*
-            System.out.println("Executing ("
-                    + getPosition()
-                    + ") " + Chess.getName(mType) 
-                    + " makeMove (ChessPiece) to " +
-                    Chess.convertInternalToAlgebraic(rank, file));
-            */
-            // END DEBUG
-            
             // check if game is active
             if ( !mIsGameActive )
                 return GAME_NOT_ACTIVE;
@@ -1116,9 +1106,7 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             // validate move
             int code = validateMove(rank, file);
             if ( code != MOVE_LEGAL ) return code;
-            
-            
-            
+
             // capture piece, if any
             ChessPiece captured = mChessBoard[rank][file];
             if ( captured != null )
@@ -1131,39 +1119,21 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             // set the new position and update mChessBoard
             updateChessPiece(rank, file);
             
-            // if we de-abstract this function, override this function
-            // for king and pawn class to handle pawn promotions and castling
-            // right here
-            
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( mColor == WHITE ) ? BLACK : WHITE;
             int playerStateCode = checkPlayerState(opponentColor);
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
-            
-            // DEBUG
-            /*
-                System.out.println("playerStateCode: " + playerStateCode);
-            if ( check )
-                System.out.println(getColorString(opponentColor) +" is in Check!");
-            if ( checkmate )
-                System.out.println(getColorString(opponentColor) +" is in Checkmate!");
-            // */ // END DEBUG
-            
+           
             // add move to mChessHistory (pass coordinates of previous square)
             mChessHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     captured, null, 
                     check, checkmate        ) );
             
-            // TODO: call EndTurn()
+            //  call EndTurn()
             endTurn(playerStateCode);
 
-            
-            
-            
-            
- 
             return code;
         }
         
@@ -1227,7 +1197,9 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             mIsActive = false;
             mStatus = PIECE_CAPTURED;
             mChessBoard[mRank][mFile] = null;
-            // TODO: call chess piece listener function
+            // call chess piece listener function
+            for ( PieceListener listener : mPieceListeners )
+                listener.onCapture(this);
             // DEBUG:
             //System.out.println(this.getName()+ " has been captured!");
         }
@@ -1250,14 +1222,16 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             
             mRank = rank;
             mFile = file;
-            //mPositionString = convertInternalToAlgebraic(rank, file);
             mChessBoard[rank][file] = this;
             mStatus = PIECE_ACTIVE;
             mIsActive = true;
             
+            
+            for ( PieceListener listener : mPieceListeners )
+                listener.onUpdate(this);
         }
         
-        // used by makeMove()
+        // used by validateMove(). does not publish
         protected void updatePosition(int rank, int file)
         {
             // set current position to null
@@ -1269,16 +1243,21 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             mFile = file;
         }
         
+        /**
+         * Updates the position of the piece and publishes to listeners
+         * @param rank rank and
+         * @param file file of new position
+         */
         protected void updateChessPiece(int rank, int file)
         {
-            // TODO: call piece lisener update function
-            
-            // DEBUG:
-            //System.out.println("Calling updateChessPiece");
             
             // increment move counter
             mMoveCount++;
             updatePosition(rank, file);
+            
+            // call liseners
+            for ( PieceListener listener : mPieceListeners )
+                listener.onMove(this);
         }
         
            /**
@@ -1602,7 +1581,7 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
                     returnList.add(new Square(mRank,6));
                     returnList.add(new Square(mRank,2));
                 } else {
-                    // TODO: make castling discoverable in Chess960 
+                    // TODO: make castling discoverable as candidate move in Chess960 
                 }
             }
             
@@ -1874,10 +1853,15 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
             
             if ( promotion != null )
             {
+                // promoting
                 mIsActive = false;
                 mStatus = PIECE_PROMOTED;
                 mChessBoard[rank][file] = null;
                 promotion.setPosition(rank, file);
+                
+                // call onPromoted callback
+                for ( PieceListener listener : mPieceListeners )
+                    listener.onPromote(this,promotion);
             }
             // add promoted piece at rank,file, if needed
             
@@ -2390,9 +2374,8 @@ public class Chess              // TODO: consider refractoring to ...cryptomega.
     
     
 
-    // TODO: implement Piece Listener
     /** *****************************************************
-     * TODO: implement Piece Listener
+     * * * * Piece Listener * * *
      *********************************************************/
     public interface PieceListener
     {

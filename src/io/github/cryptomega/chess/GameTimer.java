@@ -40,7 +40,7 @@ public class GameTimer implements TimerController
     public void initTimer(int startingMins, int incrementSecs, int initPlayerColor)
     {
         // DEBUG
-        System.out.println("GameTimer.initTimer called.");
+        // System.out.println("GameTimer.initTimer called.");
         
         mStartingMins = startingMins;
         mIncrementSecs = incrementSecs;
@@ -92,7 +92,7 @@ public class GameTimer implements TimerController
     public void stopTimer()
     {
         // DEBUG
-        System.out.println("GameTimer.stopTimer called.");
+        // System.out.println("GameTimer.stopTimer called.");
         
         if ( mTimer != null )
             mTimer.cancel();

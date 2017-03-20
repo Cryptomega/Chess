@@ -36,6 +36,12 @@ public class GameTimer implements TimerController
     GameTimer(Chess game)
     {   mGameInstance = game; }
 
+    
+    // TODO: add public method to manually set a player's remaining time
+    // TODO: add public method to set mUpdateDelayMillisec
+    
+    
+    
     @Override
     public void initTimer(int startingMins, int incrementSecs, int initPlayerColor)
     {
@@ -46,8 +52,8 @@ public class GameTimer implements TimerController
         mIncrementSecs = incrementSecs;
         mActivePlayer = initPlayerColor;
         
-        mWhiteTimeLeftSecs = 60.0 * (double)startingMins;
-        mBlackTimeLeftSecs = 60.0 * (double)startingMins;
+        mWhiteTimeLeftSecs = 60.0 * (double)mStartingMins;
+        mBlackTimeLeftSecs = 60.0 * (double)mStartingMins;
         
         mUpdateDelaySecs = (double)mUpdateDelayMillisec / 1000.0;
 
@@ -56,8 +62,6 @@ public class GameTimer implements TimerController
     @Override
     public void switchTimer()
     {
-        
-        
         // cancel current timer if running.
         stopTimer();
         mTimer = null;

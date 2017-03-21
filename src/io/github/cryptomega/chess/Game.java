@@ -14,7 +14,7 @@ import java.util.ArrayList;
  *  setupGame() and startGame(). 
  * @author Philip Schexnayder
  */
-public class Game              // TODO: consider refractoring to ...cryptomega.chess.Game
+public class Game
 {
     /* ****************************************
      * * * * Declare constants * * *
@@ -22,6 +22,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     // Game Colors
     public static final int BLACK =  0;
     public static final int WHITE =  1;
+    public static final int NONE  = -1;
     
     // Piece types
     public static final char KING =   'K';
@@ -246,7 +247,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         mChessHistory = new ArrayList<>();
         mGameStateListeners = new ArrayList<>();
         
-        clearGame(); // TODO: streamline game initialization
+        clearGame(); 
     }
     
     // TODO: COPY CONSTRUCTOR
@@ -264,6 +265,26 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     { return ( color ==  WHITE ) ? mWhiteTimeLeft : mBlackTimeLeft; }
     
     public String getGameStatus() { return getGameStatusText(mGameState); }
+    
+    /**
+     * Gets the winner of the game, if any
+     * @return White, Black, or None
+     */
+    public String getWinner()
+    {   switch(mGameState)
+        {
+            case STATUS_WHITE_WINS_CHECKMATE:
+            case STATUS_WHITE_WINS_RESIGNATION:
+            case STATUS_WHITE_WINS_TIME:
+                return "White";
+            case STATUS_BLACK_WINS_CHECKMATE:
+            case STATUS_BLACK_WINS_RESIGNATION:
+            case STATUS_BLACK_WINS_TIME:
+                return "Black";
+            default:
+                return "None";
+        }
+    }
     
     /**
      * Get the chess board with references to the active pieces on it
@@ -367,10 +388,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         resetPieces();  // reset the pieces
     }
     
-    
-    
-    
-    
+
     /**
      * Sets up the pieces on the board for a 
      * standard game. Call startGame() to begin!
@@ -381,7 +399,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         if ( mIsGameActive == true )
             throw new IllegalStateException("Cannot setup game while game is active");
         
-        // TODO: consider calling a method removeAllPieces()
+        
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
@@ -894,7 +912,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     private int getKingIndex(int color)
     {
         int kingIndex = (color == WHITE) ? mWhiteKingIndex : mBlackKingIndex;
-        if ( kingIndex != -1 ) // TODO: check that is actually the king??? seems unnessicary
+        if ( kingIndex != -1 ) 
             return kingIndex;
         
         
@@ -1094,6 +1112,11 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         return "InvalidColor";
     }
     
+    public static boolean isValidType(char type)
+    { return type == KING || type == QUEEN || type == BISHOP 
+                || type == KNIGHT || type == ROOK || type == PAWN;
+    }
+    
     public static boolean isValidCoord(int rank, int file)
     {
         return (rank >= 0 && rank <= 7
@@ -1145,7 +1168,9 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
             if ( color != WHITE && color != BLACK ) // validate color 
                 throw new IllegalArgumentException("Invalid color.");
             mColor = color;
-            // TODO: validate type
+            
+            if ( !isValidType(type) )   // validate type
+                throw new IllegalArgumentException("Invalid type.");
             mType = type;
         }
         
@@ -2223,6 +2248,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         // TODO: have method to convert piece reference to string with starting square
         // TODO: consider moving RecordOfMove outside of Chess class
         final public int moveNumber;
+        final public int whoseTurn;
         final public String movePrefix; // "1. " or "1... "
         final public String moveText;   // Readable move notation
         
@@ -2296,6 +2322,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
             
             this.checkmate = checkmate;
             
+            whoseTurn = mWhoseTurn;
             moveNumber = getMoveNumber();
             if ( mWhoseTurn == WHITE )
                 movePrefix = String.valueOf(moveNumber) + ". ";
@@ -2353,6 +2380,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
             
             this.checkmate = checkmate;
             
+            whoseTurn = mWhoseTurn;
             moveNumber = getMoveNumber();
             if ( mWhoseTurn == WHITE )
                 movePrefix = String.valueOf(moveNumber) + ". ";

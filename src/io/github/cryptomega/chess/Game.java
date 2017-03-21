@@ -254,9 +254,9 @@ public class Game
     }
     
     /**
-     * Returns a full copy of Game instance orig.
-     * Steals Game and Piece listeners from orig to take over display.
-     * The original game can later call refreshListners() to take back display.
+     * Returns a full copy of a Game instance.
+     * Steals Game and Piece listeners from original to take over display.
+     * The original game can later call refreshListeners() to take back display.
      * @param orig Original game instance
      * @return a new game instance in same position and state as orig
      */
@@ -366,13 +366,24 @@ public class Game
             return newPiece;
         }
         
-        /*
-        private ChessPiece copyPieceStealListeners()
+        /**
+         * Pushes an update on all game state listeners
+         * and all piece listeners
+         */
+        public void refreshListeners()
         {
-            // TODO: implement
-            throw new UnsupportedOperationException("Not yet implemented");
+            // game state listeners
+            if ( mGameStateListeners != null )
+                for (  GameListener listener : mGameStateListeners )
+                    listener.onGameStateUpdate( new GameStateUpdate() );
+            
+            // piece listeners
+            for ( ChessPiece piece : this.mChessPieces )
+                if ( piece.mPieceListeners != null )
+                    for ( PieceListener listener : piece.mPieceListeners )
+                        listener.onUpdate( piece );
+                        
         }
-        */
         
         
     /* *************************************************
@@ -2689,25 +2700,7 @@ public class Game
     }
     
     
-    /** *****************************************************
-     * Game State Listener
-     *********************************************************/
-    public static interface GameListener
-    {
-        /**
-         * Call back listener. This function is called every time a move 
-         * is made, and also when the game ends if onGameOver is not implemented.
-         * @param update is a GameStateUpdate object 
-         */
-        abstract public void onGameStateUpdate( GameStateUpdate update );
-        
-        /**
-         * This function is called when the game ends;
-         * @param update is a GameStateUpdate object 
-         */
-        default public void onGameOver( GameStateUpdate update )
-        { onGameStateUpdate( update ); }
-    }
+    
     
     /** *****************************************************
      * Helper class for Game State Listener
@@ -2737,72 +2730,6 @@ public class Game
             move = mChessHistory.get( mChessHistory.size() - 1 );
         }
     }
-    
-    /** *****************************************************
-     * Chess Timer Interface
-     *********************************************************/
-    public interface TimerController
-    {
-        /**
-         * Called when game is being set up to initialize the timer.
-         * Call Chess.updateTimer(int playerColor, double timeRemaining) 
-         *  to publish updates the player's remaining time
-         * @param startingMins starting time in minutes
-         * @param incrementSecs per turn increment time in seconds
-         * @param initPlayerColor player which moves first, starting the game timer
-         */
-        public void initTimer(int startingMins, int incrementSecs, int initPlayerColor);
-        
-        /**
-         * Called after each move to switch the active player
-         */
-        public void switchTimer();
-        
-        /**
-         * Called on Game Over to stop the active timer
-         */
-        public void stopTimer();
-        
-    }
-    
-    
 
-    /** *****************************************************
-     * * * * Piece Listener * * *
-     *********************************************************/
-    public static interface PieceListener
-    {
-        /**
-         * Callback on some update to piece
-         * @param piece reference to the updated piece
-         */
-        abstract public void onUpdate(ChessPiece piece);
-        
-        /**
-         * Callback for move
-         * @param piece reference to the moved piece
-         */
-        default public void onMove(ChessPiece piece)
-        { onUpdate(piece); }
-        
-        /**
-         * Callback for capture
-         * @param piece reference to the captured piece
-         */
-        default public void onCapture(ChessPiece piece)
-        { onUpdate(piece); }
-        
-        /**
-         * Callback for pawn promotion
-         * @param piece reference to the pawn promoted
-         * @param promoted reference to the new piece
-         */
-        default public void onPromote(ChessPiece piece, ChessPiece promoted)
-        { onUpdate(piece); }
-    }
-    
- 
 }
-
-
-        
+ 

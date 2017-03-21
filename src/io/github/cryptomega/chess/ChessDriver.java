@@ -32,7 +32,7 @@ public class ChessDriver
         
         // add piece liseners too all the pieces. GO CRAZY
         for ( ChessPiece piece : chess.getPieces() )
-            piece.addPieceListener(new PieceListener() );
+            piece.addPieceListener(new MyPieceListener() );
         
         // input string variable
         String input;
@@ -91,6 +91,9 @@ public class ChessDriver
                 input = scanner.nextLine();
             }
                 
+            if ( input.toUpperCase().equals("REFRESH") )
+                chess.refreshListeners();
+                    
             if ( input.toUpperCase().equals("RESTART") )
             {   chess.restartGame();
                 continue;
@@ -179,7 +182,7 @@ public class ChessDriver
     /*******************************************************************
      * ************     Quick Game PieceListener     *******************
      ***************************************************************** */
-    public static class PieceListener implements Game.PieceListener
+    public static class MyPieceListener implements PieceListener
     {
 
         @Override
@@ -292,7 +295,7 @@ public class ChessDriver
     
     // ********************************************************
     // Game state listner callbacks
-    public static class GameStateListener implements Game.GameListener
+    public static class GameStateListener implements GameListener
     {
         @Override
         public void onGameStateUpdate(Game.GameStateUpdate update)

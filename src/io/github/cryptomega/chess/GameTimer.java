@@ -4,7 +4,7 @@
 package io.github.cryptomega.chess;
 
 //import io.github.cryptomega.chess.Chess.TimerCallbackReceiver;
-import io.github.cryptomega.chess.Game.TimerController;
+//import io.github.cryptomega.chess.Game.TimerController;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -147,8 +147,8 @@ public class GameTimer implements TimerController
     private class DecrementTask extends TimerTask
     {
         @Override
-        public void run()
-        { update(); }
+        public void run()       // TODO: move update() logic into this class
+        { update(); }       
     }
     
 }

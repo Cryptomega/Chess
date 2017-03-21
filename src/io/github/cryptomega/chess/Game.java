@@ -5,6 +5,7 @@ package io.github.cryptomega.chess;
 
 import static java.lang.Math.abs;
 import java.util.ArrayList;
+import java.util.HashMap;
 //import org.springframework.util.StopWatch;
 
 
@@ -90,6 +91,8 @@ public class Game
     public static final int STATUS_DRAW_AGREEMENT =          814; 
     public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    816;
+
+    
     
     
     /* ****************************************
@@ -250,8 +253,128 @@ public class Game
         clearGame(); 
     }
     
-    // TODO: COPY CONSTRUCTOR
+    /**
+     * Returns a full copy of Game instance orig.
+     * Steals Game and Piece listeners from orig to take over display.
+     * The original game can later call refreshListners() to take back display.
+     * @param orig Original game instance
+     * @return a new game instance in same position and state as orig
+     */
+    public static Game copyGameAndStealListeners(Game orig)
+    { return new Game(orig, true); }
     
+    /**
+     * Default copy constructor. Returns a complete,
+     * independent copy of the Game object passed.
+     * Copied game will have time disabled and no listeners
+     * @param orig original game instance to copy
+     */
+    public Game(Game orig)
+    { this(orig, false); }
+    
+    // TODO: COPY CONSTRUCTOR
+    // set stealListeners = true to steal the piece listeners 
+    public Game(Game orig, boolean stealListeners)
+    {   // do some cool stuff
+        // Copy game state variables
+        this.mIsGameActive = orig.mIsGameActive;
+        this.mWhoseTurn  = orig.mWhoseTurn;
+        this.mGameState  = orig.mGameState;
+        this.mTurnCount  = orig.mTurnCount;
+        this.mWhiteOffersOrClaimsDraw  = orig.mWhiteOffersOrClaimsDraw;
+        this.mBlackOffersOrClaimsDraw  = orig.mBlackOffersOrClaimsDraw;
+        this.mWhiteTimeLeft  = orig.mWhiteTimeLeft;  // time left in seconds
+        this.mBlackTimeLeft  = orig.mBlackTimeLeft;  // time left in seconds
+        
+        // initialize lists
+        this.mChessPieces = new ArrayList<>();
+        this.mChessHistory = new ArrayList<>();
+        this.mGameStateListeners = new ArrayList<>();
+        this.clearBoard();
+        
+        // create a HashMap
+        HashMap<ChessPiece,ChessPiece> hashmap = new HashMap<>();
+        hashmap.put(null, null); // empty squares and null references get mapped to null
+        
+        // copy pieces with reference hashmap
+        for ( ChessPiece origPiece : orig.getPieces() )
+        {
+            ChessPiece newPiece = this.copyPiece( origPiece );
+            this.mChessPieces.add( newPiece );
+            
+            hashmap.put(origPiece, newPiece);  // make the hash map
+            
+            if ( stealListeners )
+                newPiece.mPieceListeners = origPiece.mPieceListeners;
+        }
+        
+        // copy board with references mapped
+        for (int r = 0; r < 8; r++)
+            for (int f = 0; f < 8; f++)
+            {
+                // TODO: add (null, null) to hashmap and eliminate this if branch
+                this.mChessBoard[r][f] = hashmap.get( orig.mChessBoard[r][f] );
+            }
+        
+        // copy history with references mapped
+        for ( RecordOfMove origRecord : orig.mChessHistory )
+        {
+            //if
+            this.mChessHistory.add( new RecordOfMove(origRecord, hashmap) );
+        }
+
+        
+        // disregard timer
+        this.mIsTimedGame = false;
+        this.mTimer = null;
+        
+        // disregard listeners unless stealListeners = true
+        if ( stealListeners )
+            this.mGameStateListeners = orig.mGameStateListeners;
+        
+        //throw new UnsupportedOperationException("COY CONSTRUCTOR!");
+    }
+    
+        
+        private ChessPiece copyPiece(ChessPiece orig)
+        {
+            ChessPiece newPiece;
+            char type = orig.getType();
+            switch (type)
+            {
+                case KING:
+                    newPiece = new King(orig);
+                    break;
+                case QUEEN:
+                    newPiece = new Queen(orig);
+                    break;
+                case BISHOP:
+                    newPiece = new Bishop(orig);
+                    break;
+                case KNIGHT:
+                    newPiece = new Knight(orig);
+                    break;
+                case ROOK:
+                    newPiece = new Rook(orig);
+                    break;
+                case PAWN:
+                    newPiece = new Pawn(orig);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid piece type argument"); 
+            }
+            return newPiece;
+        }
+        
+        /*
+        private ChessPiece copyPieceStealListeners()
+        {
+            // TODO: implement
+            throw new UnsupportedOperationException("Not yet implemented");
+        }
+        */
+        
+        
     /* *************************************************
      * * * * Public Methods * * * 
      * *************************************************/
@@ -1175,6 +1298,24 @@ public class Game
         }
         
         /**
+         * Copy constructor for ChessPiece class
+         * @param orig original
+         */
+        protected ChessPiece(ChessPiece orig)
+        {
+            this.mRank = orig.mRank;
+            this.mFile  = orig.mFile;
+            this.mType  = orig.mType;
+            this.mColor  = orig.mColor;
+            this.mStatus  = orig.mStatus;
+            this.mIsActive  = orig.mIsActive;
+            this.mMoveCount  = orig.mMoveCount;
+            this.mStartRank  = orig.mStartRank;
+            this.mStartFile  = orig.mStartFile;
+
+        }
+        
+        /**
          * Adds a listener to receive update callback from the piece
          * @param listener 
          */
@@ -1341,8 +1482,9 @@ public class Game
             mStatus = PIECE_CAPTURED;
             mChessBoard[mRank][mFile] = null;
             // call chess piece listener function
-            for ( PieceListener listener : mPieceListeners )
-                listener.onCapture(this);
+            if ( mPieceListeners != null )
+                for ( PieceListener listener : mPieceListeners )
+                    listener.onCapture(this);
             // DEBUG:
             //System.out.println(this.getName()+ " has been captured!");
         }
@@ -1390,8 +1532,9 @@ public class Game
             mStatus = PIECE_ACTIVE;
             mIsActive = true;
 
-            for ( PieceListener listener : mPieceListeners )
-                listener.onUpdate(this);
+            if ( mPieceListeners != null )
+                for ( PieceListener listener : mPieceListeners )
+                    listener.onUpdate(this);
         }
         
         // used by validateMove(). does not publish
@@ -1419,8 +1562,9 @@ public class Game
             updatePosition(rank, file);
             
             // call liseners
-            for ( PieceListener listener : mPieceListeners )
-                listener.onMove(this);
+            if ( mPieceListeners != null )
+                for ( PieceListener listener : mPieceListeners )
+                    listener.onMove(this);
         }
         
            /**
@@ -1513,6 +1657,8 @@ public class Game
             if ( !mPieceListeners.isEmpty() )
                 mPieceListeners.clear();
         }
+
+
     }
     
     /**************************************************************************
@@ -1529,6 +1675,9 @@ public class Game
         // Constructor
         private King(int color)
         { super(color, KING); }
+        
+        private King(ChessPiece orig)
+        { super(orig); }
 
         /**
          * Helper function to see if player intends to castle
@@ -1790,6 +1939,9 @@ public class Game
     {
         private Queen(int color)
         { super(color, QUEEN); }
+        
+        private Queen(ChessPiece orig)
+        { super(orig); }
 
         @Override
         public int isObserving(int rank, int file)
@@ -1855,6 +2007,9 @@ public class Game
         private Rook(int color)
         { super(color, ROOK); }
         
+        private Rook(ChessPiece orig)
+        { super(orig); }
+        
         @Override
         public int isObserving(int rank, int file)
         {
@@ -1903,6 +2058,9 @@ public class Game
     {
         private Bishop(int color)
         { super(color, BISHOP); }
+        
+        private Bishop(ChessPiece orig)
+        { super(orig); }
 
         @Override
         public int isObserving(int rank, int file)
@@ -1938,6 +2096,9 @@ public class Game
     {
         private Knight(int color)
         { super(color, KNIGHT); }
+        
+        private Knight(ChessPiece orig)
+        { super(orig); }
 
         @Override
         public int isObserving(int rank, int file)
@@ -1978,6 +2139,9 @@ public class Game
     {
         private Pawn(int color)
         { super(color, PAWN); }
+        
+        private Pawn(ChessPiece orig)
+        { super(orig); }
 
         @Override
         public int makeMove(String coord)
@@ -2053,8 +2217,9 @@ public class Game
                 promotion.setPosition(rank, file);
                 
                 // call onPromoted callback
-                for ( PieceListener listener : mPieceListeners )
-                    listener.onPromote(this,promotion);
+                if ( mPieceListeners != null )
+                    for ( PieceListener listener : mPieceListeners )
+                        listener.onPromote(this,promotion);
             }
             // add promoted piece at rank,file, if needed
             
@@ -2392,6 +2557,34 @@ public class Game
             else
                 moveText = "   0-0";
         }
+        
+        /**
+         * Copy constructor with HashMap
+         * @param orig original record
+         * @param hashmap HashMap mapping piece old piece references to new
+         */
+        private RecordOfMove(RecordOfMove orig, HashMap<ChessPiece,ChessPiece> hashmap)
+        {
+            this.moveNumber = orig.moveNumber;
+            this.whoseTurn = orig.whoseTurn;
+            this.movePrefix = orig.movePrefix;
+            this.moveText = orig.moveText;
+            this.PieceMoved = hashmap.get( orig.PieceMoved );
+            this.toRank = orig.toRank;
+            this.toFile = orig.toFile;
+            this.fromRank = orig.fromRank;
+            this.fromFile = orig.fromFile;
+            this.PieceCaptured   = hashmap.get( orig.PieceCaptured );
+            this.capturedRank   = orig.capturedRank ;
+            this.capturedFile   = orig.capturedFile ;
+            this.PiecePromoted   = hashmap.get( orig.PiecePromoted ) ;
+            this.promotionType   = orig.promotionType ;
+            this.RookCastled   = hashmap.get( orig.RookCastled ) ;
+            this.fromRookRank   = orig.fromRookRank ;
+            this.fromRookFile   = orig.fromRookFile ;
+            this.checkmate   = orig.checkmate ;
+        }
+        
     }
     
     /********************************************************
@@ -2577,7 +2770,7 @@ public class Game
     /** *****************************************************
      * * * * Piece Listener * * *
      *********************************************************/
-    public interface PieceListener
+    public static interface PieceListener
     {
         /**
          * Callback on some update to piece

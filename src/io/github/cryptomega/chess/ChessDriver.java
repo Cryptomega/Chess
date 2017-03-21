@@ -14,7 +14,7 @@ import java.util.Scanner;
  *
  * @author Philip
  */
-public class ChessDriver implements Game.GameListener
+public class ChessDriver  
 {
     /**
      * @param args the command line arguments
@@ -24,11 +24,11 @@ public class ChessDriver implements Game.GameListener
         // setup and start the chess game
         Game chess = new Game();
         chess.setupStandardGame();
-        chess.setStartTime(10, 3);
+        chess.setStartTime(30, 10);
         chess.startGame();
         
         // register listener
-        chess.addGameStateListener(new ChessDriver());
+        chess.addGameStateListener( new GameStateListener() );
         
         // add piece liseners too all the pieces. GO CRAZY
         for ( ChessPiece piece : chess.getPieces() )
@@ -60,6 +60,11 @@ public class ChessDriver implements Game.GameListener
         chess.makeMove("a6 b7");
         chess.makeMove("g8 h8");
         chess.makeMove("b7 a8=q");
+        chess.makeMove("g7 g5");
+        chess.makeMove("b2 b3");
+        chess.makeMove("g5 g4");
+        chess.makeMove("f2 f4");
+        
         //*/
         
         // game loop
@@ -97,6 +102,12 @@ public class ChessDriver implements Game.GameListener
                 break;       // exit
             }
 
+            if ( input.toUpperCase().equals("COPY") 
+                    || input.toUpperCase().equals("ANALYZE") )
+            {
+                analyze( new Game(chess, true) );
+                continue;
+            }
             
             
             if ( input.length() == 2 )  // Get Valid moves
@@ -126,6 +137,42 @@ public class ChessDriver implements Game.GameListener
                     + Game.getMoveCodeText(code)
                     + " ("+code+") < < <");
             //break; // DEBUG
+        }
+    }
+    
+    public static void analyze(Game game)
+    {
+        String input;
+        Scanner scanner = new Scanner(System.in);
+        
+        while ( true )
+        {
+            ChessPiece[][] board = game.getBoard();
+            printBoard(board);
+            
+            System.out.print("Analyzing (00 to exit):");
+            // TODO: analysis loop
+            input = scanner.nextLine();
+            
+            if ( input.equals("00") )
+                break;
+            
+            int code;    // makeMove response code
+            try { code = game.makeMove(input); }
+            catch (Exception e) 
+            {
+                System.out.println(" > > > ERROR:" + e.getMessage() + " < < <");
+                continue;
+            }
+            
+            // DEBUG System.out.println("\n");
+            System.out.println(" > > > " 
+                    + Game.getMoveCodeText(code)
+                    + " ("+code+") < < <");
+            //break; // DEBUG
+            
+
+            
         }
     }
     
@@ -242,21 +289,27 @@ public class ChessDriver implements Game.GameListener
         System.out.println("-\u2500-\u2518");
     }
 
-    @Override
-    public void onGameStateUpdate(Game.GameStateUpdate update)
-    {
-        System.out.println("[GS]Code(" 
-                + update.gameStateCode + "): " + update.gameState);
-    }
     
-    @Override
-    public void onGameOver( Game.GameStateUpdate update )
+    // ********************************************************
+    // Game state listner callbacks
+    public static class GameStateListener implements Game.GameListener
     {
-        System.out.println();
-        System.out.println("****************************************************");
-        System.out.println("[GS] GAME OVER! (" 
-                + update.gameStateCode + "): " + update.gameState);
-        System.out.println("****************************************************");
-        System.out.println();
+        @Override
+        public void onGameStateUpdate(Game.GameStateUpdate update)
+        {
+            System.out.println("[GS]Code(" 
+                    + update.gameStateCode + "): " + update.gameState);
+        }
+
+        @Override
+        public void onGameOver( Game.GameStateUpdate update )
+        {
+            System.out.println();
+            System.out.println("****************************************************");
+            System.out.println("[GS] GAME OVER! (" 
+                    + update.gameStateCode + "): " + update.gameState);
+            System.out.println("****************************************************");
+            System.out.println();
+        }
     }
 }

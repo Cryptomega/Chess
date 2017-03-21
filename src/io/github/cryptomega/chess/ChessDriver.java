@@ -23,7 +23,8 @@ public class ChessDriver implements Game.GameListener
     {
         // setup and start the chess game
         Game chess = new Game();
-        chess.setupGame();
+        chess.setupStandardGame();
+        chess.setStartTime(10, 3);
         chess.startGame();
         
         // register listener
@@ -38,6 +39,7 @@ public class ChessDriver implements Game.GameListener
         Scanner scanner = new Scanner(System.in);
         
         // DEBUG
+        // Premoves
         // /*
         chess.makeMove("e2 e4");
         chess.makeMove("e7 e5");
@@ -49,6 +51,15 @@ public class ChessDriver implements Game.GameListener
         chess.makeMove("d7 d6");
         chess.makeMove("f3 h4");
         chess.makeMove("f6 h5");
+        chess.makeMove("a2 a4");
+        chess.makeMove("e8 g8");
+        chess.makeMove("a4 a5");
+        chess.makeMove("g8 h8");
+        chess.makeMove("a5 a6");
+        chess.makeMove("h8 g8");
+        chess.makeMove("a6 b7");
+        chess.makeMove("g8 h8");
+        chess.makeMove("b7 a8=q");
         //*/
         
         // game loop
@@ -56,32 +67,40 @@ public class ChessDriver implements Game.GameListener
         {
             if ( !chess.isGameActive() )
                 System.out.print("GAME OVER: ");
-            System.out.println(chess.getGameStatus());
+            
+            System.out.print(chess.getGameStatus());
+            int secs = (int)chess.getSecondsRemaining( chess.whoseTurn() );
+            System.out.println( "   " + secs + " secs remaining");
             
             ChessPiece[][] board = chess.getBoard();
             printBoard(board);
             
-            // DEBUG isObserving() function
-            //ChessPiece piece = chess.getPieces().get(2);
-            //System.out.println("Move Code: " +
-            //        Chess.getMoveCodeText( piece.isObserving(0,0) ));
-            //break;
 
             // get input            
             System.out.print("Enter move(00 to exit):");
             input = scanner.nextLine();
-
-            if ( input.equals("00") )
+            
+            if ( !chess.isGameActive() )
             {
-                chess.endGame();
+                System.out.print("exit or restart?:");
+                input = scanner.nextLine();
+            }
+                
+            if ( input.toUpperCase().equals("RESTART") )
+            {   chess.restartGame();
+                continue;
+            }
+ 
+            // if user exits or game ends on time, exit loop
+            if ( input.equals("00") || input.toUpperCase().equals("EXIT") )
+            {   chess.endGame();
                 break;       // exit
             }
+
             
-            int code;
             
-            if ( input.length() == 2 )
-            {
-                // get moves for piece
+            if ( input.length() == 2 )  // Get Valid moves
+            {   // get moves for piece
                 int rank = Game.convertAlgebraicToInternalRank(input);
                 int file = Game.convertAlgebraicToInternalFile(input);
                 if ( !Game.isValidCoord(rank,file) )
@@ -91,6 +110,7 @@ public class ChessDriver implements Game.GameListener
                 continue;
             }
             
+            int code;    // makeMove response code
             try { code = chess.makeMove(input); }
             catch (Exception e) 
             {
@@ -102,16 +122,11 @@ public class ChessDriver implements Game.GameListener
             // System.out.println( chess.getCompleteMoveHistory() );
             
             // DEBUG System.out.println("\n");
-            if ( code != Game.MOVE_LEGAL )
-                System.out.println(" > > > " 
-                        + Game.getMoveCodeText(code)
-                        + " ("+code+") < < <");
-            else
-                System.out.println(Game.getMoveCodeText(code));
+            System.out.println(" > > > " 
+                    + Game.getMoveCodeText(code)
+                    + " ("+code+") < < <");
             //break; // DEBUG
         }
-
-
     }
     
     /*******************************************************************
@@ -123,25 +138,25 @@ public class ChessDriver implements Game.GameListener
         @Override
         public void onUpdate(ChessPiece piece)
         {
-            System.out.println("[GPL]"+piece.getUnicode() + " has updated.");
+            System.out.println("[CP]"+piece.getUnicode() + " has updated.");
         }
 
         @Override
         public void onMove(ChessPiece piece)
         {
-            System.out.println("[GPL]"+piece.getUnicode() + " has moved.");
+            System.out.println("[CP]"+piece.getUnicode() + " has moved.");
         }
 
         @Override
         public void onCapture(ChessPiece piece)
         {
-            System.out.println("[GPL]"+piece.getUnicode() + " has been captured.");
+            System.out.println("[CP]"+piece.getUnicode() + " has been captured.");
         }
 
         @Override
         public void onPromote(ChessPiece piece, ChessPiece promoted)
         {
-            System.out.println("[GPL]"+piece.getUnicode() + " has promoted.");
+            System.out.println("[CP]"+piece.getUnicode() + " has promoted.");
         }
         
     }
@@ -230,7 +245,7 @@ public class ChessDriver implements Game.GameListener
     @Override
     public void onGameStateUpdate(Game.GameStateUpdate update)
     {
-        System.out.println("[GSListener]Code(" 
+        System.out.println("[GS]Code(" 
                 + update.gameStateCode + "): " + update.gameState);
     }
     
@@ -238,10 +253,10 @@ public class ChessDriver implements Game.GameListener
     public void onGameOver( Game.GameStateUpdate update )
     {
         System.out.println();
-        System.out.println("***********************************");
-        System.out.println("[GSListener] GAME OVER! (" 
+        System.out.println("****************************************************");
+        System.out.println("[GS] GAME OVER! (" 
                 + update.gameStateCode + "): " + update.gameState);
-        System.out.println("***********************************");
+        System.out.println("****************************************************");
         System.out.println();
     }
 }

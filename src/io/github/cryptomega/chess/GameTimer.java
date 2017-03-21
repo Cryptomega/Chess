@@ -27,7 +27,7 @@ public class GameTimer implements TimerController
     private Timer mTimer = null;
     private int mUpdateDelayMillisec = 100;
     
-    //private double mUpdateDelaySecs;
+    private double mUpdateDelaySecs;
 
     /**
      * Creates the game timer. 
@@ -35,6 +35,8 @@ public class GameTimer implements TimerController
      */
     GameTimer(Game game)
     {   mGameInstance = game; }
+    
+    // TODO: add Copy Constructor
 
     
     // TODO: add public method to manually set a player's remaining time
@@ -90,9 +92,11 @@ public class GameTimer implements TimerController
         }
         
         // DEBUG
+        /*
         System.out.println("GameTimer.switchTimer called.");
         System.out.println("  White time left: " + mWhiteTimeLeftSecs);
         System.out.println("  Black time left: " + mBlackTimeLeftSecs);
+        // */
         
         //  TODO: create a new timer and schedule it
         mTimer = new Timer();

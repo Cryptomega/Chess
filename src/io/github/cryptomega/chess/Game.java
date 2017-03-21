@@ -97,25 +97,25 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     private boolean mIsGameActive;
     private int mWhoseTurn;
     private int mGameState;
-    
     private int mTurnCount;
     private boolean mWhiteOffersOrClaimsDraw;
     private boolean mBlackOffersOrClaimsDraw;
-    //private boolean mInEditMode = false;
-    //private boolean mInAnalysisMode = false;
-    //private boolean mIsChess960 = false;
+    private double mWhiteTimeLeft;  // time left in seconds
+    private double mBlackTimeLeft;  // time left in seconds
     
+    // useful index tracker variables
     private int mWhiteKingIndex = -1;
     private int mBlackKingIndex = -1;
     
-    // time variables
-    private int mStartingMinutes = 1;
-    private int mOnMoveIncrementSeconds = 0;
-    private boolean mIsTimedGame = true;
-    private boolean mUseStandardTimer = true;
+    // Game variables, options and preferences. Do not need to be reset between games
+    private int mStartingMinutes = 10;
+    private int mOnMoveIncrementSeconds = 5;
+    private boolean mIsTimedGame = false;
+    //private boolean mUseStandardTimer = true;
     private TimerController mTimer = null;
-    private double mWhiteTimeLeft;  // time left in seconds
-    private double mBlackTimeLeft;  // time left in seconds
+    //private boolean mIsChess960 = false;
+    
+    
     
     /**
      * Makes end of turn game state updates, as well as check
@@ -246,9 +246,10 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         mChessHistory = new ArrayList<>();
         mGameStateListeners = new ArrayList<>();
         
-        clearGame();
+        clearGame(); // TODO: streamline game initialization
     }
     
+    // TODO: COPY CONSTRUCTOR
     
     /* *************************************************
      * * * * Public Methods * * * 
@@ -324,54 +325,61 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
      */
     public final void clearGame()
     {
-        // reset game variables
-        mWhiteOffersOrClaimsDraw = false;
-        mBlackOffersOrClaimsDraw = false;
-        mIsGameActive = false;  
-        mTurnCount = 0;
-        mWhoseTurn = WHITE;
-        mGameState = STATUS_WHITES_TURN;
-        mWhiteKingIndex = -1;
-        mBlackKingIndex = -1;
-        mWhiteTimeLeft = mStartingMinutes*60;
-        mBlackTimeLeft = mStartingMinutes*60;
+        if ( mIsGameActive == true )
+            throw new IllegalStateException("Cannot clear game while game is active");
         
-        // initialize timer
-        if ( mIsTimedGame )
-            setGameTimer(new GameTimer(this) );
-        if ( mTimer != null )
-            mTimer.initTimer(mStartingMinutes, mOnMoveIncrementSeconds, WHITE);
-        
-        
-        
-        // clear game board
-        for (int i = 0; i < 8; i++)
-            for (int j = 0; j < 8; j++)
-                mChessBoard[i][j] = null;
+        resetGameVariables(); // reset game state variables
+        initTimer();          // initialize timer
+        clearBoard();         // clear game board
+        clearHistory();       // clear history
         
         // clear pieces array
         if ( mChessPieces != null && !mChessPieces.isEmpty() )
             mChessPieces.clear();
-        
-        // clear history
-        if ( mChessHistory != null && !mChessHistory.isEmpty() )
-            mChessHistory.clear();
+        mWhiteKingIndex = -1;
+        mBlackKingIndex = -1;
     }
     
-    // TODO: Clean up setup methods
-    // TODO: Add a Reset method
-    // public void restartGame() {}  // TODO: implement? might not be useful
+    /**
+     * Does a hard reset, ignoring mGameState.
+     * GUI might want to confirm action before 
+     * calling this.
+     */
+    public void restartGame() 
+    {
+        endGame();
+        resetGame();
+        startGame();
+    }
+    
+    /**
+     * Resets the game, so it can be restarted with startGame()
+     */
+    public void resetGame()
+    {
+        if ( mIsGameActive == true )
+            throw new IllegalStateException("Cannot clear game while game is active");
+        
+        resetGameVariables(); // reset game state variables
+        initTimer();          // initialize timer
+        clearBoard();         // clear game board
+        clearHistory();       // clear history
+        resetPieces();  // reset the pieces
+    }
+    
+    
+    
+    
     
     /**
      * Sets up the pieces on the board for a 
      * standard game. Call startGame() to begin!
      */
-    public void setupGame()
+    public void setupStandardGame()
     {
         // require mIsGameActive to be false 
         if ( mIsGameActive == true )
-            throw new IllegalStateException("Cannot add piece while game is active");
-        //clearGame();
+            throw new IllegalStateException("Cannot setup game while game is active");
         
         // TODO: consider calling a method removeAllPieces()
 
@@ -418,7 +426,6 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         
         if ( mTimer != null )
             mTimer.stopTimer();
-            
     }
     
     /**
@@ -433,24 +440,21 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         
         mStartingMinutes = startingMins;
         mOnMoveIncrementSeconds = incrementSecs;
-        mWhiteTimeLeft = mStartingMinutes*60;
-        mBlackTimeLeft = mStartingMinutes*60;
+        mWhiteTimeLeft = (double)mStartingMinutes*60.0;
+        mBlackTimeLeft = (double)mStartingMinutes*60.0;
         mIsTimedGame = !(startingMins == 0 && incrementSecs == 0);
         
-        if ( mTimer != null )
-            mTimer.initTimer(startingMins, incrementSecs, mWhoseTurn);
+        // initialize timer
+        initTimer();
     }
     
-    
-    
-    
-    
+
     /**
      * Change the default timer
      * @param timer a timer object which implements Chess.TimerController
      */
     public void setGameTimer(TimerController timer)
-    {   mUseStandardTimer = false; 
+    {   
         if ( mIsGameActive )
             return; // cannot change timer while game is active
         
@@ -613,9 +617,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     public int checkPlayerState(int color)
     {
         // check for check, checkmate, stalemate, or draw
-        ChessPiece king = getKing(color);
         boolean playerInCheck = isInCheck(color);
-        boolean playerInMate = false;
         if ( playerInCheck )
         {
             // check for checkmate
@@ -646,17 +648,12 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
     }
     
     
-    
-    /* *************************************************
-     * * * * Private Methods * * * 
-     * *************************************************/
-    
     /**
      * Method called by game timer to update the remaining timer
      * @param playerColor color of player to upgrade time
-     * @param timerRemaining remaining time in seconds
+     * @param timeRemaining remaining time in seconds
      */
-    void updateTimer(int playerColor, double timeRemaining)
+    public void updateTimer(int playerColor, double timeRemaining)
     {
         if ( playerColor == WHITE )
             mWhiteTimeLeft = timeRemaining;  // time left in seconds
@@ -673,6 +670,70 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
                 endTurn(STATUS_WHITE_WINS_TIME);
         } 
     }
+    
+    
+    /* *************************************************
+     * * * * Private Methods * * * 
+     * *************************************************/
+    
+    // ********** START SETUP HELPERS ***************
+    private void resetPieces()
+    {
+        ArrayList<ChessPiece> cleanUpList = new ArrayList<>();
+        
+        for( ChessPiece piece : mChessPieces )
+        {
+            piece.reset();
+            
+            if ( !isValidCoord(piece.mStartRank,piece.mStartFile) )
+                cleanUpList.add(piece); // save to clean up
+        }
+        
+        for ( ChessPiece piece : cleanUpList)
+        {
+            // piece was not added to a starting square  
+            // originnaly with addPieceToGame()
+            // may have promoted
+            // get rid of it
+            piece.releaseListeners(); // release listeners
+            mChessPieces.remove(piece); // remove the piece
+        }         
+    }
+    private void initTimer()    // initialize timer
+    {   
+        if ( mIsTimedGame )
+            setGameTimer(new GameTimer(this) );
+        if ( mTimer != null )
+            mTimer.initTimer(mStartingMinutes, mOnMoveIncrementSeconds, mWhoseTurn);
+    }
+    private void clearHistory()
+    {
+        // clear history
+        if ( mChessHistory != null && !mChessHistory.isEmpty() )
+            mChessHistory.clear();
+    }
+    private void clearBoard()
+    {
+        // clear game board
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                mChessBoard[i][j] = null;
+    }
+    private void resetGameVariables()
+    {
+        // reset game variables
+        mWhiteOffersOrClaimsDraw = false;
+        mBlackOffersOrClaimsDraw = false;
+        mIsGameActive = false;  
+        mTurnCount = 0;
+        mWhoseTurn = WHITE;
+        mGameState = STATUS_WHITES_TURN;
+        mWhiteTimeLeft = mStartingMinutes*60;
+        mBlackTimeLeft = mStartingMinutes*60;
+    }
+    // ********** END SETUP HELPERS ***************
+    
+    
     
     
         /**
@@ -816,6 +877,9 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         //if ( newPiece == null )
         //    return null;
         newPiece.setPosition(rank, file);
+        // Set startRank, startFile
+        newPiece.mStartRank = rank;
+        newPiece.mStartFile = file;
         return newPiece;
     }
     
@@ -1060,7 +1124,7 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         protected int mStatus = PIECE_NOT_PLACED;
         protected boolean mIsActive = false;
         protected int mMoveCount = 0;
-        protected int mStartRank, mStartFile; // TODO: implement 
+        protected int mStartRank = -1, mStartFile = -1;  
         
         // Listeners
         protected ArrayList<PieceListener> mPieceListeners;
@@ -1257,7 +1321,28 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
             // DEBUG:
             //System.out.println(this.getName()+ " has been captured!");
         }
-                
+        
+        /**
+         * Sets the starting coordinate
+         * @param coord a1, g4, etc
+         */
+        public void setStartPosition(String coord)
+        { setStartPosition(convertAlgebraicToInternalRank(coord),
+                    Game.convertAlgebraicToInternalFile(coord) ); }
+        
+        /**
+         * Set the starting position
+         * @param rank 0-7
+         * @param file 0-7
+         */
+        public void setStartPosition(int rank, int file)
+        {
+            if ( !isValidCoord(rank, file) )
+                throw new IllegalArgumentException("Illegal arguement for setStartPosition");
+            
+            mStartRank = rank;
+            mStartFile = file;
+        }
         
         protected void setPosition(String coord)
         {
@@ -1373,6 +1458,36 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
         public int getMoveCount() { return mMoveCount; }
         public String getName() { return Game.getName(mType); }
         public char getUnicode() { return Game.getUnicode(mColor, mType); }
+
+        private void reset()
+        {
+            if ( !isValidCoord(mStartRank,mStartFile) )
+            {
+                // piece was not added to a starting square  
+                // originnaly with addPieceToGame()
+                // may have promoted
+                mIsActive = false;
+                /*
+                // get rid of it
+                // DEBUG:
+                System.out.println("Piece.reset is removing junk piece "+mChessPieces.size());
+                releaseListeners(); // release listeners
+                mChessPieces.remove(this); // DEBUG TEST
+                // DEBUG:
+                System.out.println("Piece.reset size after removing: "+ mChessPieces.size());
+                */
+            } else {
+                // Resets the piece to its starting position
+                mMoveCount = 0;
+                setPosition(mStartRank,mStartFile);
+            }
+        }
+        
+        public void releaseListeners()
+        {
+            if ( !mPieceListeners.isEmpty() )
+                mPieceListeners.clear();
+        }
     }
     
     /**************************************************************************
@@ -2104,6 +2219,8 @@ public class Game              // TODO: consider refractoring to ...cryptomega.c
      *********************************************************/
     public class RecordOfMove
     {
+        // TODO: prepare to be serializable
+        // TODO: have method to convert piece reference to string with starting square
         // TODO: consider moving RecordOfMove outside of Chess class
         final public int moveNumber;
         final public String movePrefix; // "1. " or "1... "

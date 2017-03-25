@@ -25,6 +25,9 @@ public class Game
     public static final int WHITE =  1;
     public static final int NONE  = -1;
     
+    public static final int BOARD_NUMBER_RANKS = 8;
+    public static final int BOARD_NUMBER_FILES = 8;
+    
     // Piece types
     public static final char KING =   'K';
     public static final char QUEEN =  'Q';
@@ -85,8 +88,8 @@ public class Game
     public static final int STATUS_BLACK_WINS_TIME =         809;
     
     public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810; // draws
-    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811; // TODO
-    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO
+    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811; // TODO:
+    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO:
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
     public static final int STATUS_DRAW_AGREEMENT =          814; 
     public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
@@ -178,7 +181,7 @@ public class Game
         
         // TODO: implement more game state checks
 
-        // transitions turn turn to other player
+        // transitions turn to other player
         mWhoseTurn = (mWhoseTurn == WHITE) ? BLACK : WHITE;
         mTurnCount++;
         
@@ -192,6 +195,7 @@ public class Game
         }
          
         // TODO: implement draws claim check
+        // checkForDraw();
         //      if player wants to claim draw,
         //      check three fold repetition
         //      check last fifty moves
@@ -223,27 +227,32 @@ public class Game
      * Cells contain reference to the occupying 
      * chess piece, or null if the square is empty.
      ***********************************************/
-    private final ChessPiece[][] mChessBoard = new ChessPiece[8][8];
+    private final ChessPiece[][] mChessBoard =
+            new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
     
     
-    /** ************************************************
+    /* *************************************************
      * * * * ArrayList of all chess pieces * * * 
-     **************************************************/
+     * *************************************************/
     private final ArrayList<ChessPiece> mChessPieces; 
     
     
-    /**************************************************
+    /* *************************************************
      * * * * History ArrayList * * * 
-     *************************************************/
+     * ************************************************/
     private final ArrayList<RecordOfMove> mChessHistory;
     
     
     // Game State Listeners
     private ArrayList<GameListener> mGameStateListeners;
     
-    /* *************************************************
+    /** ************************************************
      * * * * Constructor * * * 
-     **************************************************/
+     * Initiates a new game. 
+     *    chess.setupStandardGame();
+     *    chess.setStartTime(30, 10);
+     *    chess.startGame();
+     * *************************************************/
     public Game()
     {
         mChessPieces = new ArrayList<>();
@@ -252,6 +261,15 @@ public class Game
         
         clearGame(); 
     }
+    
+    /**
+     * Returns a full independent copy of a Game instance.
+     * Timer and listeners are not copied.
+     * @param orig original game
+     * @return 
+     */
+    public static Game copyGame(Game orig)
+    { return new Game(orig, false); }
     
     /**
      * Returns a full copy of a Game instance.
@@ -272,19 +290,25 @@ public class Game
     public Game(Game orig)
     { this(orig, false); }
     
-    // TODO: COPY CONSTRUCTOR
-    // set stealListeners = true to steal the piece listeners 
-    public Game(Game orig, boolean stealListeners)
+    /**
+     * Creates a full independent copy of a Game instance. 
+     * @param origGame original Game instance to copy.
+     * @param stealListeners if true game listeners belonging to
+     *         origGame will be added to the copied game as well.
+     *         The listeners can be refreshed from origGame to regain
+     *         control.
+     */
+    public Game(Game origGame, boolean stealListeners)
     {   // do some cool stuff
         // Copy game state variables
-        this.mIsGameActive = orig.mIsGameActive;
-        this.mWhoseTurn  = orig.mWhoseTurn;
-        this.mGameState  = orig.mGameState;
-        this.mTurnCount  = orig.mTurnCount;
-        this.mWhiteOffersOrClaimsDraw  = orig.mWhiteOffersOrClaimsDraw;
-        this.mBlackOffersOrClaimsDraw  = orig.mBlackOffersOrClaimsDraw;
-        this.mWhiteTimeLeft  = orig.mWhiteTimeLeft;  // time left in seconds
-        this.mBlackTimeLeft  = orig.mBlackTimeLeft;  // time left in seconds
+        this.mIsGameActive = origGame.mIsGameActive;
+        this.mWhoseTurn  = origGame.mWhoseTurn;
+        this.mGameState  = origGame.mGameState;
+        this.mTurnCount  = origGame.mTurnCount;
+        this.mWhiteOffersOrClaimsDraw  = origGame.mWhiteOffersOrClaimsDraw;
+        this.mBlackOffersOrClaimsDraw  = origGame.mBlackOffersOrClaimsDraw;
+        this.mWhiteTimeLeft  = origGame.mWhiteTimeLeft;  // time left in seconds
+        this.mBlackTimeLeft  = origGame.mBlackTimeLeft;  // time left in seconds
         
         // initialize lists
         this.mChessPieces = new ArrayList<>();
@@ -297,7 +321,7 @@ public class Game
         hashmap.put(null, null); // empty squares and null references get mapped to null
         
         // copy pieces with reference hashmap
-        for ( ChessPiece origPiece : orig.getPieces() )
+        for ( ChessPiece origPiece : origGame.getPieces() )
         {
             ChessPiece newPiece = this.copyPiece( origPiece );
             this.mChessPieces.add( newPiece );
@@ -309,15 +333,15 @@ public class Game
         }
         
         // copy board with references mapped
-        for (int r = 0; r < 8; r++)
-            for (int f = 0; f < 8; f++)
+        for (int r = 0; r < BOARD_NUMBER_RANKS; r++)
+            for (int f = 0; f < BOARD_NUMBER_FILES; f++)
             {
                 // TODO: add (null, null) to hashmap and eliminate this if branch
-                this.mChessBoard[r][f] = hashmap.get( orig.mChessBoard[r][f] );
+                this.mChessBoard[r][f] = hashmap.get(origGame.mChessBoard[r][f] );
             }
         
         // copy history with references mapped
-        for ( RecordOfMove origRecord : orig.mChessHistory )
+        for ( RecordOfMove origRecord : origGame.mChessHistory )
         {
             //if
             this.mChessHistory.add( new RecordOfMove(origRecord, hashmap) );
@@ -330,7 +354,7 @@ public class Game
         
         // disregard listeners unless stealListeners = true
         if ( stealListeners )
-            this.mGameStateListeners = orig.mGameStateListeners;
+            this.mGameStateListeners = origGame.mGameStateListeners;
         
         //throw new UnsupportedOperationException("COY CONSTRUCTOR!");
     }
@@ -390,7 +414,9 @@ public class Game
      * * * * Public Methods * * * 
      * *************************************************/
     
-    // true if game is active. Use startGame() to activate
+    /**
+     * @return true if game is active. Use startGame() to activate
+     */
     public boolean isGameActive() { return mIsGameActive; }
     public int whoseTurn() { return mWhoseTurn; }
     public int getMoveNumber() { return (2 + mTurnCount) / 2; }
@@ -426,8 +452,8 @@ public class Game
      */
     public ChessPiece[][] getBoard()
         { 
-            ChessPiece[][] copy = new ChessPiece[8][8];
-            for (int i = 0; i < 8; i++)
+            ChessPiece[][] copy = new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
+            for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
                 copy[i] = mChessBoard[i].clone();
             return copy;
         } 
@@ -543,7 +569,7 @@ public class Game
         addPieceToGame(WHITE, BISHOP, 0, 5 );
         addPieceToGame(WHITE, KNIGHT, 0, 6 );
         addPieceToGame(WHITE, ROOK, 0, 7 );
-        for ( int i =0; i<8; i++)
+        for ( int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(WHITE, PAWN, 1, i);
         
         
@@ -555,7 +581,7 @@ public class Game
         addPieceToGame(BLACK, BISHOP, 7, 5 );
         addPieceToGame(BLACK, KNIGHT, 7, 6 );
         addPieceToGame(BLACK, ROOK, 7, 7 );
-        for ( int i =0; i<8; i++)
+        for ( int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(BLACK, PAWN, 6, i);
 
     }
@@ -867,8 +893,8 @@ public class Game
     private void clearBoard()
     {
         // clear game board
-        for (int i = 0; i < 8; i++)
-            for (int j = 0; j < 8; j++)
+        for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
+            for (int j = 0; j < BOARD_NUMBER_FILES; j++)
                 mChessBoard[i][j] = null;
     }
     private void resetGameVariables()
@@ -1803,7 +1829,7 @@ public class Game
             int kingFile = getFile();
             int sign = Integer.signum( toFile - kingFile );
             
-            for ( int i = kingFile + sign; (i >= 0 && i < 8); i += sign )
+            for ( int i = kingFile + sign; (i >= 0 && i < BOARD_NUMBER_FILES); i += sign )
             {
                 if ( mChessBoard[toRank][i] != null && 
                         mChessBoard[toRank][i].getType() == ROOK )
@@ -2638,7 +2664,7 @@ public class Game
             
             for (int dRank = -1; dRank <= 1; dRank += 2  )
                 for (int dFile = -1; dFile <= 1; dFile += 2  )
-                    for (int i = 1; i < 8; i++)
+                    for (int i = 1; i < BOARD_NUMBER_RANKS; i++) // assumes board is square
                     {
                         int newRank = rank + i * dRank;
                         int newFile = file + i * dFile;
@@ -2654,7 +2680,7 @@ public class Game
             ArrayList<Square> returnList = new ArrayList<>();
             if ( file < 0 || file > 7 )
                 return returnList;  //return empty
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
                 returnList.add(new Square(i,file));
             return returnList;
         }
@@ -2664,7 +2690,7 @@ public class Game
             ArrayList<Square> returnList = new ArrayList<>();
             if ( rank < 0 || rank > 7 )
                 return returnList;  //return empty
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < BOARD_NUMBER_FILES; i++)
                 returnList.add(new Square(rank,i));
             return returnList;
         }

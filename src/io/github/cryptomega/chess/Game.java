@@ -9,6 +9,10 @@ import java.util.HashMap;
 //import org.springframework.util.StopWatch;
 
 
+// TODO: got through all private methods with inRank, inFile paramaters
+// that have been refactored from rank, file and check for potential bugs
+// TODO: add public methods commented throughout refactored code
+
 /**
  *  Chess
  *  after instantiating an instance of Chess, start a game by calling
@@ -94,6 +98,8 @@ public class Game
     public static final int STATUS_DRAW_AGREEMENT =          814; 
     public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    816;
+
+    
 
     
 
@@ -227,23 +233,23 @@ public class Game
      * chess piece, or null if the square is empty.
      ***********************************************/
     private final ChessPiece[][] mChessBoard =
-            new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
+            new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES]; // TODO: refactor
     
     
     /* *************************************************
      * * * * ArrayList of all chess pieces * * * 
      * *************************************************/
-    private final ArrayList<ChessPiece> mChessPieces; 
+    private final ArrayList<ChessPiece> mChessPieces;  // TODO: refactor
     
     
     /* *************************************************
      * * * * History ArrayList * * * 
      * ************************************************/
-    private final ArrayList<RecordOfMove> mChessHistory;
+    private final ArrayList<RecordOfMove> mChessHistory; // TODO: refactor
     
     
     // Game State Listeners
-    private ArrayList<GameListener> mGameStateListeners;
+    private ArrayList<GameListener> mGameStateListeners; // TODO: refactor
     
     /** ************************************************
      * * * * Constructor * * * 
@@ -334,17 +340,11 @@ public class Game
         // copy board with references mapped
         for (int r = 0; r < BOARD_NUMBER_RANKS; r++)
             for (int f = 0; f < BOARD_NUMBER_FILES; f++)
-            {
-                // TODO: add (null, null) to hashmap and eliminate this if branch
-                this.mChessBoard[r][f] = hashmap.get(originalGame.mChessBoard[r][f] );
-            }
+               this.mChessBoard[r][f] = hashmap.get(originalGame.mChessBoard[r][f] );
         
         // copy history with references mapped
         for ( RecordOfMove originalRecord : originalGame.mChessHistory )
-        {
-            //if
             this.mChessHistory.add( new RecordOfMove(originalRecord, hashmap) );
-        }
 
         
         // disregard timer
@@ -352,10 +352,7 @@ public class Game
         this.GameTimer = null;
         
         // disregard listeners unless stealListeners = true
-        if ( stealListeners )
-            this.mGameStateListeners = originalGame.mGameStateListeners;
-        
-        //throw new UnsupportedOperationException("COY CONSTRUCTOR!");
+        if ( stealListeners ) this.mGameStateListeners = originalGame.mGameStateListeners;
     }
     
         
@@ -452,13 +449,13 @@ public class Game
      * Get the chess board with references to the active pieces on it
      * @return Returns a 2d array of ChessPiece
      */
-    public ChessPiece[][] getBoard()
-        { 
-            ChessPiece[][] copy = new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
-            for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
-                copy[i] = mChessBoard[i].clone();
-            return copy;
-        } 
+    public ChessPiece[][] getBoard()    // TODO: make private
+    { 
+        ChessPiece[][] copy = new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
+        for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
+            copy[i] = mChessBoard[i].clone();
+        return copy;
+    } 
     
     /**
      * Gets all the ChessPiece references in an ArrayList
@@ -560,8 +557,6 @@ public class Game
         // require mIsGameActive to be false 
         if ( isGameActive == true )
             throw new IllegalStateException("Cannot setup game while game is active");
-        
-        
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
@@ -585,7 +580,6 @@ public class Game
         addPieceToGame(BLACK, ROOK, 7, 7 );
         for ( int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(BLACK, PAWN, 6, i);
-
     }
     
     
@@ -652,7 +646,7 @@ public class Game
     
     /**
      * Player resigns
-     * @param player color of resigning player
+     * @param player either Game.WHITE or Game.BLACK
      */
     public void resign(int player)
     {  
@@ -670,7 +664,7 @@ public class Game
     
     /**
      * Player offers/claims a draw
-     * @param player color of offering player
+     * @param player color of offering player. either Game.WHITE or Game.BLACK
      */
     public void draw(int player)
     {
@@ -690,64 +684,79 @@ public class Game
      * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8=Q"
      * the third character can be any character, and extraneous
      * characters are ignored
-     * @return returns MOVE_LEGAL (100) if the move is accepted, 
-     *         otherwise returns error code
+     * @return an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
+     *         and String Game.getMoveCodeText(Code)
      */
     public int makeMove(String move)
     {
+        
         if ( move.length() < 5 ) // TODO: return error code instead of throwing exception
             throw new IllegalArgumentException("Invalid input string");
         String fromString = move.substring(0, 2);
-        String to = move.substring(3, 5);
-        int fromRank = Game.convertInRankFromAlgebraic(fromString);
-        int fromFile = Game.convertInFileFromAlgebraic(fromString);
-        int toRank = Game.convertInRankFromAlgebraic(to);
-        int toFile = Game.convertInFileFromAlgebraic(to);
+        String toString = move.substring(3, 5);
+        int fromInRank = Game.convertInRankFromAlgebraic(fromString);
+        int fromInFile = Game.convertInFileFromAlgebraic(fromString);
+        int toInRank = Game.convertInRankFromAlgebraic(toString);
+        int toInFile = Game.convertInFileFromAlgebraic(toString);
         
         if ( move.length() >= 7)
-        {
-            char promoType = move.toUpperCase().charAt(6);
+        {   char promoType = move.toUpperCase().charAt(6);
             if ( promoType == QUEEN || promoType == ROOK
                     || promoType == BISHOP || promoType == KNIGHT )
-                return makeMove(fromRank, fromFile, toRank, toFile, promoType);
+                return makeMoveIn(fromInRank, fromInFile, toInRank, toInFile, promoType);
         }
-        return makeMove(fromRank, fromFile, toRank, toFile);        
+        return makeMoveIn(fromInRank, fromInFile, toInRank, toInFile);        
     }
     
     
     /**
-     * Makes a move using internal coordinates
-     * @param fromRank value from 0-7
-     * @param fromFile value from 0-7
-     * @param toRank value from 0-7
-     * @param toFile value from 0-7
-     * @return returns MOVE_LEGAL (100) if the move is accepted, 
-     *         otherwise returns error code
+     * Makes a move using chess coordinates
+     * @param fromChessRank value from 1-8
+     * @param fromChessFile value from 1-8
+     * @param toChessRank value from 1-8
+     * @param toChessFile value from 1-8
+     * @return an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
+     *         and String Game.getMoveCodeText(Code)
      */
-    public int makeMove(int fromRank, int fromFile, int toRank, int toFile)
+    public int makeMove(int fromChessRank, int fromChessFile, int toChessRank, int toChessFile)
+    {   return makeMoveIn(
+                Game.convertInRankFromChessRank(fromChessRank),
+                convertInFileFromChessFile(fromChessFile),
+                Game.convertInRankFromChessRank(toChessRank),
+                convertInFileFromChessFile(toChessFile)          );
+    }
+    protected int makeMoveIn(int fromInRank, int fromInFile, int toInRank, int toInFile)
     {   // TODO: return error instead of throw
-        if ( !isValidInCoord(fromRank, fromFile) || !isValidInCoord(toRank, toFile) ) 
+        if ( !isValidInCoord(fromInRank, fromInFile) || !isValidInCoord(toInRank, toInFile) ) 
             throw new IllegalArgumentException("Invalid arguements for makeMove");
         // check if piece exist at "from" coord
-        if ( mChessBoard[fromRank][fromFile] == null )
+        if ( mChessBoard[fromInRank][fromInFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
         else
-            return mChessBoard[fromRank][fromFile].makeMove(toRank, toFile);
-
+            return mChessBoard[fromInRank][fromInFile].makeMoveIn(toInRank, toInFile);
     }
     
     
     /**
-     * Makes a move using internal coordinates, providing promotion type if needed
-     * @param fromRank value from 0-7
-     * @param fromFile value from 0-7
-     * @param toRank value from 0-7
-     * @param toFile value from 0-7
+     * Makes a move using chess coordinates, providing promotion type if needed
+     * @param fromChessRank value from 1-8
+     * @param fromChessFile value from 1-8
+     * @param toChessRank value from 1-8
+     * @param toChessFile value from 1-8
      * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
-     * @return returns MOVE_LEGAL (100) if the move is accepted, 
-     *         otherwise returns error code
+     * @return returns an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
+     *         and String Game.getMoveCodeText(Code)
      */
-    public int makeMove(int fromRank, int fromFile, int toRank, int toFile, char promotionType)
+    public int makeMove(int fromChessRank, int fromChessFile, 
+            int toChessRank, int toChessFile, char promotionType )
+    {   return makeMoveIn(
+                Game.convertInRankFromChessRank(fromChessRank),
+                convertInFileFromChessFile(fromChessFile),
+                Game.convertInRankFromChessRank(toChessRank),
+                convertInFileFromChessFile(toChessFile),
+                promotionType );
+    }
+    protected int makeMoveIn(int fromRank, int fromFile, int toRank, int toFile, char promotionType)
     {
         if ( !isValidInCoord(fromRank, fromFile) || !isValidInCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
@@ -755,7 +764,7 @@ public class Game
         if ( mChessBoard[fromRank][fromFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
         else
-            return mChessBoard[fromRank][fromFile].makeMove(toRank, toFile, promotionType);
+            return mChessBoard[fromRank][fromFile].makeMoveIn(toRank, toFile, promotionType);
     }
     
     /**
@@ -767,19 +776,19 @@ public class Game
     {
         // get the king
         ChessPiece king = getKing(color);
-        int kingRank = king.getRank();
-        int kingFile = king.getFile();
-        return isInCheck(color, kingRank, kingFile);
+        int kingInRank = king.inRank;
+        int kingInFile = king.inFile;
+        return isInCheck(color, kingInRank, kingInFile);
     }
     
     /**
      * Check to see if king would be in check at a coordinate
      * @param color color of king to examine
-     * @param rank rank of square to examine
-     * @param file file of square to examine
+     * @param inRank rank of square to examine
+     * @param inFile file of square to examine
      * @return true if in check, false if not
      */
-    public boolean isInCheck(int color, int rank, int file)
+    private boolean isInCheck(int color, int inRank, int inFile)
     {
         
         for ( ChessPiece piece : mChessPieces )
@@ -788,7 +797,7 @@ public class Game
             if ( !piece.isActive || piece.getColor() == color )
                 continue;
             
-            if ( piece.isObserving(rank, file) == PIECE_IS_OBSERVING )
+            if ( piece.isObservingIn(inRank, inFile) == PIECE_IS_OBSERVING )
                 return true;
         }
         return false;
@@ -943,8 +952,8 @@ public class Game
     {
         // get the king
         ChessPiece king = getKing(color);
-        int kingRank = king.getRank();
-        int kingFile = king.getFile();
+        int kingRank = king.inRank;
+        int kingFile = king.inFile;
         
         // get checking piece(s)
         ChessPiece checkingPiece = null;
@@ -954,7 +963,7 @@ public class Game
         {
             if ( !piece.isActive || piece.Color == color ) // skip is inactive or same color
                 continue;
-            if ( piece.isObserving(kingRank, kingFile) == PIECE_IS_OBSERVING )
+            if ( piece.isObservingIn(kingRank, kingFile) == PIECE_IS_OBSERVING )
             {
                 if ( checkingPiece == null )
                 {
@@ -973,8 +982,8 @@ public class Game
         if ( !doubleCheck )
         {
             // if not double check, check for blocks or captures
-            int cInRank = checkingPiece.getRank();
-            int cInFile = checkingPiece.getFile();
+            int cInRank = checkingPiece.inRank;
+            int cInFile = checkingPiece.inFile;
             ArrayList<Square> interveningSquares 
                     = Square.getInterveningSquares(
                             kingRank, kingFile, cInRank, cInFile );
@@ -984,12 +993,12 @@ public class Game
             
             // check for odd case when en passant saves king from checkmage
             if ( checkingPiece.getType() == PAWN && checkingPiece.MoveCount == 1 
-                && ( ( color == WHITE && checkingPiece.getRank() == 4 ) 
-                    || ( color == BLACK && checkingPiece.getRank() == 3 ) ) )
+                && ( ( color == WHITE && checkingPiece.inRank == 4 ) 
+                    || ( color == BLACK && checkingPiece.inRank == 3 ) ) )
             {
-                int enPassantRank = (color == WHITE) ? 5 : 2;
-                if ( isValidInCoord(enPassantRank,cInFile) )
-                    interveningSquares.add( new Square(enPassantRank,cInFile) );
+                int enPassantInRank = (color == WHITE) ? 5 : 2;
+                if ( isValidInCoord(enPassantInRank,cInFile) )
+                    interveningSquares.add( new Square(enPassantInRank,cInFile) );
             }
             
             // check all pieces for captures or blocks
@@ -1056,7 +1065,7 @@ public class Game
         ChessPiece newPiece = addPieceToGame(color, type);
         //if ( newPiece == null )
         //    return null;
-        newPiece.setPosition(inRank, inFile);
+        newPiece.setPositionIn(inRank, inFile);
         // Set startRank, startFile
         newPiece.StartInRank = inRank;
         newPiece.StartInFile = inFile;
@@ -1113,7 +1122,11 @@ public class Game
     private static int convertInFileFromChessFile(char chessFile)
     {   return (int)Character.toUpperCase(chessFile) - (int)'A'; }
     
-    
+    private static int convertChessRankFromInRank(int inRank)
+    {   return inRank + 1; }
+
+    private static int convertChessFileFromInFile(int inFile)
+    {   return inFile + 1; }
     
     private static String convertAlgebraicFromIn(int inRank, int inFile)
     {   if ( !isValidInCoord(inRank, inFile) )
@@ -1129,11 +1142,11 @@ public class Game
                 Game.convertInFileFromAlgebraic(coord) ); 
     }
     
-    public static int getSquareColor(int rank, int file)
-    {
-        if ( !isValidInCoord(rank, file) )
+    public static int getSquareColor(int inRank, int inFile) // TODO: make private
+    {   
+        if ( !isValidInCoord(inRank, inFile) )
             throw new IllegalArgumentException("Invalid Coordinate");
-        return (rank+file)%2; 
+        return (inRank+inFile)%2; 
     }
     
     public static boolean isMoveCodeLegal(int code)
@@ -1301,6 +1314,13 @@ public class Game
     {   return isValidInCoord(convertInRankFromAlgebraic(square),
                 convertInFileFromAlgebraic(square) );
     }
+
+    public boolean isSquareOccupied(int fromRank, int fromFile)
+    {
+        int r = convertInRankFromChessRank(fromRank);
+        int f = convertInFileFromChessFile(fromFile);
+        return mChessBoard[r][f] != null;
+    }
     
     
     
@@ -1383,7 +1403,7 @@ public class Game
          */
         public int makeMove(String coord)
         {
-            return makeMove(Game.convertInRankFromAlgebraic(coord),
+            return makeMoveIn(Game.convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord) );
         }
         
@@ -1393,7 +1413,7 @@ public class Game
          * @return move code
          */
         public int makeMove(Square square)
-        { return makeMove(square.inRank, square.inFile); }
+        { return makeMoveIn(square.inRank, square.inFile); }
         
         /**
          * Validates a move given a target square
@@ -1401,7 +1421,7 @@ public class Game
          * @return move code
          */
         public int validateMove(Square square)
-        { return validateMove(square.inRank, square.inFile); }
+        { return validateMoveIn(square.inRank, square.inFile); }
         
         /**
          * MAKES THE MOVE! after validating the move by calling validateMove
@@ -1411,10 +1431,12 @@ public class Game
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int file, char promotionType)
+        //public int makeMove(int rank, int file, char promotionType)
+        //{return -1;} // TODO: implement
+        protected int makeMoveIn(int inRank, int inFile, char promotionType)
         {
             //System.out.println("Promotion type: " + promotionType); // DEBUG
-            return makeMove(rank, file);
+            return makeMoveIn(inRank, inFile);
         }
         
         
@@ -1425,7 +1447,10 @@ public class Game
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int makeMove(int rank, int file)
+        //public int makeMove(int rank, int file)
+        //{return -1;} // TODO: implement
+        
+        protected int makeMoveIn(int inRank, int inFile)
         {
             // check if game is active
             if ( !isGameActive )
@@ -1440,20 +1465,20 @@ public class Game
                 return MOVE_ILLEGAL_WRONG_PLAYER;
             
             // validate move
-            int code = validateMove(rank, file);
+            int code = validateMoveIn(inRank, inFile);
             if ( code != MOVE_LEGAL ) return code;
 
             // capture piece, if any
-            ChessPiece captured = mChessBoard[rank][file];
+            ChessPiece captured = mChessBoard[inRank][inFile];
             if ( captured != null )
                 captured.captured();
             
             // hold onto last location
-            int fromRank = inRank;
-            int fromFile = inFile;
+            int fromInRank = this.inRank;
+            int fromInFile = this.inFile;
             
             // set the new position and update mChessBoard
-            updateChessPiece(rank, file);
+            updateChessPieceIn(inRank, inFile);
             
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( Color == WHITE ) ? BLACK : WHITE;
@@ -1463,7 +1488,7 @@ public class Game
            
             // add move to mChessHistory (pass coordinates of previous square)
             mChessHistory.add(new RecordOfMove(
-                    this, fromRank, fromFile,
+                    this, fromInRank, fromInFile,
                     captured, null, 
                     check, checkmate        ) );
             
@@ -1481,21 +1506,24 @@ public class Game
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        public int validateMove(int rank, int file)
+        //public int validateMove(int rank, int file)
+        //{return -1;}    // TODO: implement
+        
+        protected int validateMoveIn(int inRank, int inFile)
         {
             // TODO: potential optimization: track validated moves
             //       so moves don't need to be re-evaluated
             
-            if ( !isValidInCoord(rank, file) )
+            if ( !isValidInCoord(inRank, inFile) )
                 throw new IllegalArgumentException("Invalid Coordinate");
             
             // square cannot be occupied by own piece
-            if ( mChessBoard[rank][file] != null
-                    && mChessBoard[rank][file].getColor() == Color )
+            if ( mChessBoard[inRank][inFile] != null
+                    && mChessBoard[inRank][inFile].getColor() == Color )
                 return MOVE_ILLEGAL_SQUARE_OCCUPIED;
             
             // piece must be observing the square
-            int isObservingCode = isObserving(rank,file);
+            int isObservingCode = isObservingIn(inRank,inFile);
             if ( isObservingCode != PIECE_IS_OBSERVING )
                 return isObservingCode;
                         
@@ -1504,20 +1532,20 @@ public class Game
             //      (2)call isInCheck(mColor)
             //      (3)undo moving piece, undo removing captured piece
             
-            int fromRank = getRank();  // save current rank
-            int fromFile = getFile();  // and file
+            int fromInRank = this.inRank;  // save current rank
+            int fromInFile = this.inFile;  // and file
             
             // (1) get piece to be captured, if any
-            ChessPiece captured = mChessBoard[rank][file];
+            ChessPiece captured = mChessBoard[inRank][inFile];
             if ( captured != null )
                 captured.isActive = false;     // temporarily deactivate
-            updatePosition(rank,file);   // (1)temporarily move the piece
+            updatePositionIn(inRank,inFile);   // (1)temporarily move the piece
             
             boolean isInCheck = isInCheck(Color);  // (2)
             
             // undo temporary move (3)
-            updatePosition(fromRank, fromFile);
-            mChessBoard[rank][file] = captured;
+            updatePositionIn(fromInRank, fromInFile);
+            mChessBoard[inRank][inFile] = captured;
             if ( captured != null )
                 captured.isActive = true;
             
@@ -1546,7 +1574,7 @@ public class Game
          * @param coord a1, g4, etc
          */
         public void setStartPosition(String coord)
-        { setStartPosition(convertInRankFromAlgebraic(coord),
+        { setStartPositionIn(convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord) ); }
         
         /**
@@ -1554,33 +1582,36 @@ public class Game
          * @param rank 0-7
          * @param file 0-7
          */
-        public void setStartPosition(int rank, int file)
+        //public void setStartPosition(int rank, int file)
+        //{} // TODO: implement
+        
+        private void setStartPositionIn(int inRank, int inFile)
         {
-            if ( !isValidInCoord(rank, file) )
+            if ( !isValidInCoord(inRank, inFile) )
                 throw new IllegalArgumentException("Illegal arguement for setStartPosition");
             
-            StartInRank = rank;
-            StartInFile = file;
+            StartInRank = inRank;
+            StartInFile = inFile;
         }
         
         protected void setPosition(String coord)
         {
-            setPosition(Game.convertInRankFromAlgebraic(coord),
+            setPositionIn(Game.convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord) );
         }
         
-        protected void setPosition(int rank, int file)
+        protected void setPositionIn(int inRank, int inFile)
         {
-            if ( !isValidInCoord(rank, file) )
+            if ( !isValidInCoord(inRank, inFile) )
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
 
             // check if square is already occupied
-            if ( mChessBoard[rank][file] != null )
+            if ( mChessBoard[inRank][inFile] != null )
                 throw new IllegalStateException("Cannot set piece on occupied square");
             
-            inRank = rank;
-            inFile = file;
-            mChessBoard[rank][file] = this;
+            this.inRank = inRank;
+            this.inFile = inFile;
+            mChessBoard[inRank][inFile] = this;
             Status = PIECE_ACTIVE;
             isActive = true;
 
@@ -1590,28 +1621,28 @@ public class Game
         }
         
         // used by validateMove(). does not publish
-        protected void updatePosition(int rank, int file)
+        protected void updatePositionIn(int inRank, int inFile)
         {
             // set current position to null
-            mChessBoard[inRank][inFile] = null;
+            mChessBoard[this.inRank][this.inFile] = null;
             // set reference to this piece at new square
-            mChessBoard[rank][file] = this;
+            mChessBoard[inRank][inFile] = this;
             // set the position in the piece
-            inRank = rank;
-            inFile = file;
+            this.inRank = inRank;
+            this.inFile = inFile;
         }
         
         /**
          * Updates the position of the piece and publishes to listeners
-         * @param rank rank and
-         * @param file file of new position
+         * @param inRank rank and
+         * @param inFile file of new position
          */
-        protected void updateChessPiece(int rank, int file)
+        protected void updateChessPieceIn(int inRank, int inFile)
         {
             
             // increment move counter
             MoveCount++;
-            updatePosition(rank, file);
+            updatePositionIn(inRank, inFile);
             
             // call liseners
             if ( mPieceListeners != null )
@@ -1619,13 +1650,19 @@ public class Game
                     listener.onMove(this);
         }
         
-           /**
-            * Returns true if the piece is observing (attacking) a square
-            * @param rank value from 0-7
-            * @param file value from 0-7
-            * @return true or false
-            */
-        abstract public int isObserving(int rank, int file);
+        /**
+         * Returns true if the piece is observing (attacking) a square
+         * @param chessRank value from 1-8
+         * @param chessFile value from 1-8
+         * @return true or false
+         */
+        public int isObserving(int chessRank, int chessFile)
+        {   // TODO: validate range
+            return isObservingIn( convertInRankFromChessRank(chessRank),
+                convertInFileFromChessFile(chessFile) ); }
+        
+        
+        abstract protected int isObservingIn(int rank, int file);
         
         /**
          * returns true if the piece has a valid move
@@ -1671,8 +1708,8 @@ public class Game
          */
         public String getPosition()
             { return Game.convertAlgebraicFromIn(inRank, inFile); } 
-        public int getRank() { return inRank; }
-        public int getFile() { return inFile; }
+        public int getRank() { return Game.convertChessRankFromInRank(inRank); }
+        public int getFile() { return Game.convertChessFileFromInFile(inFile); }
         public char getType() { return Type; }
         public int getColor() { return Color; }
         public int getStatus() { return Status; }
@@ -1700,7 +1737,7 @@ public class Game
             } else {
                 // Resets the piece to its starting position
                 MoveCount = 0;
-                setPosition(StartInRank,StartInFile);
+                setPositionIn(StartInRank,StartInFile);
             }
         }
         
@@ -1755,19 +1792,19 @@ public class Game
         }
                 
         @Override
-        public int validateMove(int rank, int file)
+        protected int validateMoveIn(int inRank, int inFile)
         {
-            if ( isTryingToCastle(rank,file) )
-                return validateCastle(rank,file);
+            if ( isTryingToCastle(inRank,inFile) )
+                return validateCastle(inRank,inFile);
             else
-                return super.validateMove(rank, file);
+                return super.validateMoveIn(inRank, inFile);
         }
 
         @Override
-        public int makeMove(int rank, int file) 
+        protected int makeMoveIn(int rank, int file) 
         {
             if ( !isTryingToCastle(rank, file) )
-                return super.makeMove(rank, file);
+                return super.makeMoveIn(rank, file);
             return tryToCastle(rank,file);
         }
         
@@ -1806,8 +1843,8 @@ public class Game
 
             int fromRank = inRank;
             int fromFile = inFile;
-            int fromRookRank = castlingRook.getRank();
-            int fromRookFile = castlingRook.getFile();
+            int fromRookRank = castlingRook.inRank;
+            int fromRookFile = castlingRook.inFile;
 
             // castling which way
             boolean isCastlingKingside = fromRookFile > fromFile;
@@ -1817,8 +1854,8 @@ public class Game
             
 
             // update king and rook
-            updateChessPiece(fromRank, toKingFile);
-            castlingRook.updateChessPiece(fromRookRank, toRookFile);
+            updateChessPieceIn(fromRank, toKingFile);
+            castlingRook.updateChessPieceIn(fromRookRank, toRookFile);
             
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( Color == WHITE ) ? BLACK : WHITE;
@@ -1841,7 +1878,7 @@ public class Game
         private ChessPiece getCastlingRook(int toRank, int toFile)
         {
             // returns the rook to castle with
-            int kingFile = getFile();
+            int kingFile = inFile;
             int sign = Integer.signum( toFile - kingFile );
             
             for ( int i = kingFile + sign; (i >= 0 && i < BOARD_NUMBER_FILES); i += sign )
@@ -1872,8 +1909,8 @@ public class Game
             // rook cannot have made a move already
             if ( castlingRook.MoveCount != 0 ) return ILLEGAL_CASTLE_ROOK_HAS_MOVED;
             
-            int rookFile = castlingRook.getFile();
-            int kingFile = getFile();
+            int rookFile = castlingRook.inFile;
+            int kingFile = this.inFile;
             boolean isCastlingKingside = rookFile > kingFile;
             int toKingFile = isCastlingKingside ? 6 : 2;
             int toRookFile = isCastlingKingside ? 5 : 3;
@@ -1921,7 +1958,7 @@ public class Game
         
 
         @Override
-        public int isObserving(int rank, int file) 
+        protected int isObservingIn(int rank, int file) 
         {
             if ( ( Math.abs(inRank - rank) <= 1 ) 
                     && ( Math.abs(inFile - file) <= 1 )
@@ -1972,7 +2009,7 @@ public class Game
         { super(orig); }
 
         @Override
-        public int isObserving(int rank, int file)
+        protected int isObservingIn(int rank, int file)
         {
             //System.out.println("Calling queen isObserving " + Chess.convertInternalToAlgebraic(rank, file)); // DEBUG
             if ( inRank == rank && inFile == file )  // already occupying square
@@ -2039,7 +2076,7 @@ public class Game
         { super(orig); }
         
         @Override
-        public int isObserving(int rank, int file)
+        protected int isObservingIn(int rank, int file)
         {
             if ( inRank == rank && inFile == file )  // already occupying square
                  return MOVE_ILLEGAL;
@@ -2091,7 +2128,7 @@ public class Game
         { super(orig); }
 
         @Override
-        public int isObserving(int rank, int file)
+        protected int isObservingIn(int rank, int file)
         {
             if ( inRank == rank && inFile == file )  // already occupying square
                  return MOVE_ILLEGAL;
@@ -2129,7 +2166,7 @@ public class Game
         { super(orig); }
 
         @Override
-        public int isObserving(int rank, int file)
+        protected int isObservingIn(int rank, int file)
         {
             //if ( mRank == rank && mFile == file )  // already occupying square
             //     return MOVE_ILLEGAL;
@@ -2177,18 +2214,18 @@ public class Game
             char promoType = ' ';
             if ( coord.length() >= 4 )
                 promoType = coord.charAt(3);
-            return makeMove(Game.convertInRankFromAlgebraic(coord),
+            return makeMoveIn(Game.convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord), promoType );
         }
         
         @Override
-        public int makeMove(int rank, int file)
+        protected int makeMoveIn(int rank, int file)
         {
-            return makeMove(rank, file, ' ' );
+            return makeMoveIn(rank, file, ' ' );
         }
         
         @Override
-        public int makeMove(int rank, int file, char promotionType)
+        protected int makeMoveIn(int inRank, int inFile, char promotionType)
         {
             // the pawn business
             // check if game is active
@@ -2204,14 +2241,14 @@ public class Game
                 return MOVE_ILLEGAL_WRONG_PLAYER;
             
             // validate move
-            int code = validateMove(rank, file);
+            int code = validateMoveIn(inRank, inFile);
             if ( code != MOVE_LEGAL && code != MOVE_LEGAL_EN_PASSANT ) return code;
             
             
             ChessPiece promotion = null;
             // check for promotion
-            if ( (Color == WHITE && rank == 7 ) 
-                    || (Color == BLACK && rank == 0 ) )
+            if ( (Color == WHITE && inRank == 7 ) 
+                    || (Color == BLACK && inRank == 0 ) )
             {
                 // get ready to promote!
                 if ( !isValidPromotionType(promotionType) )
@@ -2223,26 +2260,26 @@ public class Game
             // capture piece, if any
             ChessPiece captured;
             if ( code == MOVE_LEGAL_EN_PASSANT )
-                captured = mChessBoard[inRank][file];
+                captured = mChessBoard[this.inRank][inFile];
             else
-                captured = mChessBoard[rank][file];
+                captured = mChessBoard[inRank][inFile];
             if ( captured != null )
                 captured.captured();
             
             // hold onto last location
-            int fromRank = inRank;
-            int fromFile = inFile;
+            int fromRank = this.inRank;
+            int fromFile = this.inFile;
             
             // set the new position and update mChessBoard
-            updateChessPiece(rank, file);
+            updateChessPieceIn(inRank, inFile);
             
             if ( promotion != null )
             {
                 // promoting
                 isActive = false;
                 Status = PIECE_PROMOTED;
-                mChessBoard[rank][file] = null;
-                promotion.setPosition(rank, file);
+                mChessBoard[inRank][inFile] = null;
+                promotion.setPositionIn(inRank, inFile);
                 
                 // call onPromoted callback
                 if ( mPieceListeners != null )
@@ -2286,7 +2323,7 @@ public class Game
         
         
         @Override
-        public int validateMove(int rank, int file) 
+        protected int validateMoveIn(int rank, int file) 
         {
             if ( !isValidInCoord(rank, file) )
                 throw new IllegalArgumentException("Invalid Coordinate");
@@ -2301,7 +2338,7 @@ public class Game
             ChessPiece captured = null;
             boolean enPassant = false;
             if ( (inFile == file) && (inRank + direction == rank ) )  
-            {
+            {   
                 // moving forward one square
                 if ( mChessBoard[rank][file] != null )
                     return MOVE_ILLEGAL_PAWN_BLOCKED;
@@ -2340,7 +2377,7 @@ public class Game
                     RecordOfMove lastMove = mChessHistory.get( mChessHistory.size() - 1 );
                     if ( lastMove.PieceMoved != neighborPawn )
                         return MOVE_ILLEGAL_LATE_EN_PASSANT;
-                    if ( lastMove.fromRank != inRank + 2*direction )
+                    if ( lastMove.fromInRank != inRank + 2*direction )
                         return MOVE_ILLEGAL_LATE_EN_PASSANT;
                     captured = neighborPawn;
                     enPassant = true;
@@ -2377,12 +2414,12 @@ public class Game
                 if ( enPassant )
                     mChessBoard[fromRank][file] = null;
             }
-            updatePosition(rank,file);   // (1)temporarily move the piece
+            updatePositionIn(rank,file);   // (1)temporarily move the piece
             
             boolean isInCheck = isInCheck(Color);  // (2)
             
             // undo temporary move (3)
-            updatePosition(fromRank, fromFile);
+            updatePositionIn(fromRank, fromFile);
             if ( captured != null )
             {
                 captured.isActive = true;
@@ -2403,7 +2440,7 @@ public class Game
         }
         
         @Override
-        public int isObserving(int rank, int file)
+        protected int isObservingIn(int rank, int file)
         {
             int direction = (Color == WHITE) ? 1 : -1;
             if ( (inRank + direction == rank) &&
@@ -2447,12 +2484,12 @@ public class Game
         
         // The piece moved. required
         final public ChessPiece PieceMoved;
-        final public int fromRank, fromFile;
-        final public int toRank, toFile;
+        final public int fromInRank, fromInFile;
+        final public int toInRank, toInFile;
         
         // Captured piece. null if nothing captured
         final public ChessPiece PieceCaptured;
-        final public int capturedRank, capturedFile;
+        final public int capturedInRank, capturedInFile;
                 
         // Piece promoted to. null if no promotion
         final public ChessPiece PiecePromoted;
@@ -2461,7 +2498,8 @@ public class Game
         
         // Rook castled with. null if player didn't castle
         final public ChessPiece RookCastled;
-        final public int fromRookRank, fromRookFile;
+        final public int fromRookInRank, fromRookInFile;
+            // TODO: remove. redundent with startInRank, startInFile
         
         final public boolean checkmate;
         
@@ -2488,19 +2526,19 @@ public class Game
                 boolean check, boolean checkmate)
         {
             PieceMoved = moved;
-            fromRank = movedFromRank;
-            fromFile = movedFromFile;
-            toRank = PieceMoved.getRank();
-            toFile = PieceMoved.getFile();
+            fromInRank = movedFromRank;
+            fromInFile = movedFromFile;
+            toInRank = PieceMoved.inRank;
+            toInFile = PieceMoved.inFile;
             
             PieceCaptured = captured;
             if ( PieceCaptured != null )
             {
-                capturedRank = moved.getRank();
-                capturedFile = moved.getFile();
+                capturedInRank = PieceCaptured.inRank;
+                capturedInFile = PieceCaptured.inFile;
             } else {
-                capturedRank = -1;
-                capturedFile = -1;
+                capturedInRank = -1;
+                capturedInFile = -1;
             }
             
             PiecePromoted = promo;
@@ -2510,8 +2548,8 @@ public class Game
                 promotionType = 'x';
             
             RookCastled = null;
-            fromRookRank = -1;
-            fromRookFile = -1;
+            fromRookInRank = -1;
+            fromRookInFile = -1;
             
             this.checkmate = checkmate;
             
@@ -2528,9 +2566,9 @@ public class Game
                 sb.append(" ");
             else
                 sb.append(PieceMoved.getType());
-            sb.append(Game.convertAlgebraicFromIn(fromRank, fromFile))
+            sb.append(Game.convertAlgebraicFromIn(fromInRank, fromInFile))
             .append( (PieceCaptured == null) ? "-" : "x" )
-            .append(Game.convertAlgebraicFromIn(toRank, toFile))
+            .append(Game.convertAlgebraicFromIn(toInRank, toInFile))
             .append( (PiecePromoted == null) ? "" : "=" + promotionType )
             .append( checkmate ? "#" : check ? "+" : "");
             moveText = sb.toString();
@@ -2554,20 +2592,20 @@ public class Game
                 boolean check, boolean checkmate)
         {
             PieceMoved = moved;
-            fromRank = movedFromRank;
-            fromFile = movedFromFile;
-            toRank = PieceMoved.getRank();
-            toFile = PieceMoved.getFile();
+            fromInRank = movedFromRank;
+            fromInFile = movedFromFile;
+            toInRank = PieceMoved.inRank;
+            toInFile = PieceMoved.inFile;
 
             RookCastled = castledRook;
             if ( RookCastled == null )
                 throw new IllegalArgumentException("Called wrong RecordOfMove constructor");
-            this.fromRookRank = fromRookRank;
-            this.fromRookFile = fromRookFile;
+            this.fromRookInRank = fromRookRank;
+            this.fromRookInFile = fromRookFile;
             
             PieceCaptured = null;
-            capturedRank = -1;
-            capturedFile = -1;
+            capturedInRank = -1;
+            capturedInFile = -1;
             PiecePromoted = null;
             promotionType = 'x';
             
@@ -2584,6 +2622,7 @@ public class Game
                 moveText = " 0-0-0";
             else
                 moveText = "   0-0";
+            // TODO: use StringBuilder to add + or # if check or mate
         }
         
         /**
@@ -2598,18 +2637,18 @@ public class Game
             this.movePrefix = orig.movePrefix;
             this.moveText = orig.moveText;
             this.PieceMoved = hashmap.get( orig.PieceMoved );
-            this.toRank = orig.toRank;
-            this.toFile = orig.toFile;
-            this.fromRank = orig.fromRank;
-            this.fromFile = orig.fromFile;
+            this.toInRank = orig.toInRank;
+            this.toInFile = orig.toInFile;
+            this.fromInRank = orig.fromInRank;
+            this.fromInFile = orig.fromInFile;
             this.PieceCaptured   = hashmap.get( orig.PieceCaptured );
-            this.capturedRank   = orig.capturedRank ;
-            this.capturedFile   = orig.capturedFile ;
+            this.capturedInRank   = orig.capturedInRank ;
+            this.capturedInFile   = orig.capturedInFile ;
             this.PiecePromoted   = hashmap.get( orig.PiecePromoted ) ;
             this.promotionType   = orig.promotionType ;
             this.RookCastled   = hashmap.get( orig.RookCastled ) ;
-            this.fromRookRank   = orig.fromRookRank ;
-            this.fromRookFile   = orig.fromRookFile ;
+            this.fromRookInRank   = orig.fromRookInRank ;
+            this.fromRookInFile   = orig.fromRookInFile ;
             this.checkmate   = orig.checkmate ;
         }
         

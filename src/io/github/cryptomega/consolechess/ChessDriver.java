@@ -26,10 +26,12 @@ public class ChessDriver
      */
     public static void main(String[] args)
     {
+
+        
         // setup and start the chess game
         Game myGame = new Game();
         myGame.setupStandardGame();
-        myGame.setStartTime(30, 10);
+        myGame.setStartTime(10, 10);
         myGame.startGame();
         
         // register listener
@@ -43,34 +45,8 @@ public class ChessDriver
         String input;
         Scanner scanner = new Scanner(System.in);
         
-        // DEBUG
-        // Premoves
-         /*
-        chess.makeMove("e2 e4");
-        chess.makeMove("e7 e5");
-        chess.makeMove("g1 f3");
-        chess.makeMove("g8 f6");
-        chess.makeMove("f1 c4");
-        chess.makeMove("f8 c5");
-        chess.makeMove("d2 d3");
-        chess.makeMove("d7 d6");
-        chess.makeMove("f3 h4");
-        chess.makeMove("f6 h5");
-        chess.makeMove("a2 a4");
-        chess.makeMove("e8 g8");
-        chess.makeMove("a4 a5");
-        chess.makeMove("g8 h8");
-        chess.makeMove("a5 a6");
-        chess.makeMove("h8 g8");
-        chess.makeMove("a6 b7");
-        chess.makeMove("g8 h8");
-        chess.makeMove("b7 a8=q");
-        chess.makeMove("g7 g5");
-        chess.makeMove("b2 b3");
-        chess.makeMove("g5 g4");
-        chess.makeMove("f2 f4");
-        
-        //*/
+       // DEBUG
+       debug(myGame);
         
         // game loop
         while ( true )
@@ -79,7 +55,7 @@ public class ChessDriver
                 System.out.print("GAME OVER: ");
             
             System.out.print(myGame.getGameStatus());
-            int secs = (int)myGame.getSecondsRemaining(myGame.whoseTurn() );
+            int secs = (int)myGame.getSecondsRemaining(myGame.getWhoseTurn() );
             System.out.println( "   " + secs + " secs remaining");
             
             ChessPiece[][] board = myGame.getBoard();
@@ -118,6 +94,7 @@ public class ChessDriver
             }
             
             
+            /*
             if ( input.length() == 2 )  // Get Valid moves
             {   // get moves for piece
                 int rank = Game.convertAlgebraicToInternalRank(input);
@@ -131,6 +108,7 @@ public class ChessDriver
                 printCandidateMoves(piece);
                 continue;
             }
+            */
             
             int code;    // makeMove response code
             try { code = myGame.makeMove(input); }
@@ -141,7 +119,7 @@ public class ChessDriver
             }
             
             // DEBUG
-            // System.out.println( chess.getCompleteMoveHistory() );
+             System.out.println( myGame.getCompleteMoveHistory() );
             
             // DEBUG System.out.println("\n");
             System.out.println(" > > > " 
@@ -272,20 +250,96 @@ public class ChessDriver
         System.out.println("-\u2500-\u2518");
     }
 
+    private static void debug(Game myGame)
+    {
+         // DEBUG Premoves
+         ///*
+         String[] movelist = {
+        "e2 e4", "e7 e5",
+        "g1 f3", "g8 f6",
+        "f1 c4", "f8 c5",
+        "d2 d3", "d7 d6",
+        "f3 h4", "f6 h5",
+        "a2 a4", "e8 g8",
+        "a4 a5", "g8 h8",
+        "a5 a6", "h8 g8",
+        "a6 b7", "g8 h8",
+        "b7 a8=q", "g7 g5",
+        "b2 b3", "g5 g4",
+        "f2 f4", "g4 f3",
+        "d3 d4", "c5 b6",
+        "e1 g1", "d8 h4",
+        "b1 c3", "f8 g8",
+        "a8 b8", "g8 g2",
+        "g1 h1",  // MATE IN ONE
+                 "h4 d8",
+        "d4 e5", "d6 e5",
+        "c4 f7", "g2 c2",
+        "f7 h5", "c2 c3",
+        "b8 b6", "d8 d1",
+        "b6 a7", "c3 c1",
+        "a1 c1", "d1 b3",
+        "a7 c7", "c8 e6",
+        "c7 e5", "h8 g8",
+        "f1 f3", "b3 f3",
+        "h1 g1", "f3 e4",
+        "h2 h3", "e6 h3",
+        "h5 e2", "e4 e5",
+        "c1 e1", "h7 h5",
+        "e2 h5", "e5 h5",
+        "e1 e2", "h5 e2",
+        "g1 h1", "e2 h2",
+        "h1 h2", "d1 d2"
+         };
+        for (String move : movelist)
+        {
+            
+            int fromRank = 1 + (int)move.charAt(1) - (int)'1';
+            int fromFile = 1 + (int)move.charAt(0) - (int)'a';
+            //char fromFile = move.charAt(0);
+            
+            int toRank = 1 + (int)move.charAt(4) - (int)'1';
+            int toFile = 1 + (int)move.charAt(3) - (int)'a';
+            //char toFile = move.charAt(3);
+            
+            //System.out.println("Move: " + fromRank + fromFile + toRank + toFile);
+            //myGame.makeMove(fromRank, fromFile, toRank, toFile);
+            //myGame.makeMove(move);
+            
+            if ( !myGame.isSquareOccupied(fromRank,fromFile) ) 
+            {
+                    System.out.println("WRONG!");
+            }
+            
+            char promo = ' '; 
+            if ( move.length() >= 7) promo = move.charAt(6);
+            if ( move.length() >= 7)
+            {
+                
+                myGame.makeMove(fromRank,fromFile, toRank,toFile, promo);
+            } else {
+                myGame.makeMove(fromRank,fromFile, toRank,toFile);
+            }
+        }
+        
+        System.out.println( myGame.getCompleteMoveHistory() );
+        //*/ // END DEBUG
+    }
+
     
     // ********************************************************
     // Game state listner callbacks
     public static class GameStateListener implements GameListener
     {
         @Override
-        public void onGameStateUpdate(Game.GameStateUpdate update)
+        public void onGameStateUpdate(Game.GameStats update)
         {
             System.out.println("[GS]Code(" 
                     + update.gameStateCode + "): " + update.gameState);
         }
 
         @Override
-        public void onGameOver( Game.GameStateUpdate update )
+        public void onGameOver( Game.GameStats update )
         {
             System.out.println();
             System.out.println("****************************************************");

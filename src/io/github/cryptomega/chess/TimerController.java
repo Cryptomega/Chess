@@ -4,7 +4,7 @@
 package io.github.cryptomega.chess;
 
 /**
- *
+ * TODO: document timer interface
  * @author Philip
  */
 /** *****************************************************

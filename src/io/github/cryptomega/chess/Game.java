@@ -96,7 +96,7 @@ public class Game
     public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO:
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
     public static final int STATUS_DRAW_AGREEMENT =          814; 
-    public static final int STATUS_DRAW_MATERIAL =           815;  // TODO:
+    public static final int STATUS_DRAW_MATERIAL =           815;
     public static final int STATUS_DRAW_WHITE_STALEMATE =    816;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    817;
     
@@ -484,7 +484,7 @@ public class Game
         for ( RecordOfMove item : mChessHistory )
         {
             if ( whitesTurn )
-                history.append( item.movePrefix );
+                history.append(item.moveNumber).append(". ");
             history.append( item.moveText );
             if ( whitesTurn )
                 history.append( " ");
@@ -2003,7 +2003,7 @@ public class Game
              //  change this call
             mChessHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
-                    castlingRook, fromRookRank, fromRookFile,
+                    castlingRook,
                     check, checkmate        ) );
 
             
@@ -2611,37 +2611,41 @@ public class Game
         // TODO: have method to convert piece reference to string with starting square
         final public int moveNumber;
         final public int whoseTurn;
-        final public String movePrefix; // "1. " or "1... "
         final public String moveText;   // Readable move notation
-        
         // The piece moved. required
         final public ChessPiece PieceMoved;
-        final public int fromInRank, fromInFile;
-        final public int toInRank, toInFile;
-        
+        final private int fromInRank, fromInFile;
+        final private int toInRank, toInFile;
         // Captured piece. null if nothing captured
         final public ChessPiece PieceCaptured;
-        final public int capturedInRank, capturedInFile;
-                
+        final private int capturedInRank, capturedInFile;
         // Piece promoted to. null if no promotion
         final public ChessPiece PiecePromoted;
         final public char promotionType;
-        
-        
         // Rook castled with. null if player didn't castle
         final public ChessPiece RookCastled;
-        final public int fromRookInRank, fromRookInFile;
-            // TODO: remove. redundent with startInRank, startInFile
-        
-        final public boolean checkmate;
+        final public boolean checkmate; // did this move produce checkmate
         
         /**
          * Gets a notational representation of the move
          * @return example: "1... e7 e5"
          */
-        public String getMoveText()
-        { return movePrefix + moveText; }
+        public String getFullMoveText()
+        {   return (whoseTurn == WHITE) ?  moveNumber + ". " + moveText
+                    : moveNumber + "... " + moveText ;
+        }
+        
+        @Override public String toString()
+        { return moveText; }
 
+        // getters
+        public int getFromRank() {return convertChessRankFromInRank(fromInRank);}
+        public int getFromFile() {return convertChessFileFromInFile(fromInFile);}
+        public int getToRank() {return convertChessRankFromInRank(toInRank);}
+        public int getToFile() {return convertChessFileFromInFile(toInFile);}
+        public int getCapturedRank() {return convertChessRankFromInRank(capturedInRank);}
+        public int getCapturedFile() {return convertChessFileFromInFile(capturedInFile);}
+ 
         /**
          * Call after piece has moved and its position updated, before 
          * turn count has been incremented
@@ -2680,17 +2684,9 @@ public class Game
                 promotionType = 'x';
             
             RookCastled = null;
-            fromRookInRank = -1;
-            fromRookInFile = -1;
-            
             this.checkmate = checkmate;
-            
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
-            if ( whoseTurn == WHITE )
-                movePrefix = String.valueOf(moveNumber) + ". ";
-            else
-                movePrefix = String.valueOf(moveNumber) + "... ";
             
             // construct move string
             StringBuilder sb = new StringBuilder();
@@ -2720,7 +2716,7 @@ public class Game
          * @param checkmate true if opponent is being mated
          */
         private RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
-                ChessPiece castledRook, int fromRookRank, int fromRookFile,
+                ChessPiece castledRook, 
                 boolean check, boolean checkmate)
         {
             PieceMoved = moved;
@@ -2732,25 +2728,17 @@ public class Game
             RookCastled = castledRook;
             if ( RookCastled == null )
                 throw new IllegalArgumentException("Called wrong RecordOfMove constructor");
-            this.fromRookInRank = fromRookRank;
-            this.fromRookInFile = fromRookFile;
             
             PieceCaptured = null;
             capturedInRank = -1;
             capturedInFile = -1;
             PiecePromoted = null;
             promotionType = 'x';
-            
             this.checkmate = checkmate;
-            
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
-            if ( whoseTurn == WHITE )
-                movePrefix = String.valueOf(moveNumber) + ". ";
-            else
-                movePrefix = String.valueOf(moveNumber) + "... ";
             
-            if ( fromRookFile < movedFromFile  )
+            if ( castledRook.StartInFile < movedFromFile  )
                 moveText = " 0-0-0";
             else
                 moveText = "   0-0";
@@ -2766,7 +2754,6 @@ public class Game
         {
             this.moveNumber = orig.moveNumber;
             this.whoseTurn = orig.whoseTurn;
-            this.movePrefix = orig.movePrefix;
             this.moveText = orig.moveText;
             this.PieceMoved = hashmap.get( orig.PieceMoved );
             this.toInRank = orig.toInRank;
@@ -2779,8 +2766,6 @@ public class Game
             this.PiecePromoted   = hashmap.get( orig.PiecePromoted ) ;
             this.promotionType   = orig.promotionType ;
             this.RookCastled   = hashmap.get( orig.RookCastled ) ;
-            this.fromRookInRank   = orig.fromRookInRank ;
-            this.fromRookInFile   = orig.fromRookInFile ;
             this.checkmate   = orig.checkmate ;
         }
         

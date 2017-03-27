@@ -9,8 +9,7 @@ import java.util.HashMap;
 //import org.springframework.util.StopWatch;
 
 
-// TODO: got through all private methods with inRank, inFile paramaters
-// that have been refactored from rank, file and check for potential bugs
+
 // TODO: add public methods commented throughout refactored code
 
 /**
@@ -62,6 +61,7 @@ public class Game
     public static final int AMBIGUOUS_PROMOTION               = 120;
     public static final int GAME_NOT_ACTIVE                   = 121;
     public static final int PIECE_NOT_ACTIVE                  = 122;
+    public static final int INVALID_COORDINATE                = 123;
     public static final int PIECE_IS_OBSERVING                = 199;
     
     
@@ -96,12 +96,13 @@ public class Game
     public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO:
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
     public static final int STATUS_DRAW_AGREEMENT =          814; 
-    public static final int STATUS_DRAW_WHITE_STALEMATE =    815;
-    public static final int STATUS_DRAW_BLACK_STALEMATE =    816;
-
+    public static final int STATUS_DRAW_MATERIAL =           815;  // TODO:
+    public static final int STATUS_DRAW_WHITE_STALEMATE =    816;
+    public static final int STATUS_DRAW_BLACK_STALEMATE =    817;
     
 
     
+
 
     /* ****************************************
      * * * Game State variables * * *
@@ -689,9 +690,8 @@ public class Game
      */
     public int makeMove(String move)
     {
-        
-        if ( move.length() < 5 ) // TODO: return error code instead of throwing exception
-            throw new IllegalArgumentException("Invalid input string");
+        if ( move.length() < 5 ) 
+            return INVALID_COORDINATE;
         String fromString = move.substring(0, 2);
         String toString = move.substring(3, 5);
         int fromInRank = Game.convertInRankFromAlgebraic(fromString);
@@ -710,6 +710,51 @@ public class Game
     
     
     /**
+     * Checks if a move is valid using algebraic coordinates.
+     * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8"
+     * the third character can be any character, and extraneous
+     * characters are ignored
+     * @return an integer move Code. You can use boolean Game.isMoveCodeLegal(Code)
+     *         and String Game.getMoveCodeText(Code)
+     */
+    public int validateMove(String move)
+    {
+        if ( move.length() < 5 ) 
+            return INVALID_COORDINATE;
+        String fromString = move.substring(0, 2);
+        String toString = move.substring(3, 5);
+        int fromRank = Game.convertChessRankFromAlgebraic(fromString);
+        int fromFile = Game.convertChessFileFromAlgebraic(fromString);
+        int toRank = Game.convertChessRankFromAlgebraic(toString);
+        int toFile = Game.convertChessFileFromAlgebraic(toString);
+        return this.validateMove(fromRank, fromFile, toRank, toFile);        
+    }
+    
+    
+    /**
+     * Checks a move to see if its valid. Returns a move Code. You can examine the code 
+     * with Game.getMoveCodeText(Code) and Game.isMoveCodeLegal(Code)
+     * @param fromChessRank int 1-8
+     * @param fromChessFile int 1-8 (corresponding to files a-h)
+     * @param toChessRank int 1-8
+     * @param toChessFile int 1-8 (corresponding to files a-h)
+     * @return int Code
+     */
+    public int validateMove(int fromChessRank, int fromChessFile, int toChessRank, int toChessFile)
+    {
+        if ( !isValidChessCoord(fromChessRank, fromChessFile) 
+                || !isValidChessCoord(toChessRank, toChessFile) ) 
+            return INVALID_COORDINATE;
+        
+        if ( !this.isSquareOccupied(fromChessRank, fromChessFile) ) 
+            return Game.MOVE_ILLEGAL_SQUARE_EMPTY;
+        
+        int r = Game.convertInRankFromChessRank(toChessRank);
+        int f = Game.convertInFileFromChessFile(toChessFile);
+        return this.getPieceAt(fromChessRank, fromChessFile).validateMoveIn(r, f);
+    }
+    
+    /**
      * Makes a move using chess coordinates
      * @param fromChessRank value from 1-8
      * @param fromChessFile value from 1-8
@@ -726,9 +771,9 @@ public class Game
                 convertInFileFromChessFile(toChessFile)          );
     }
     protected int makeMoveIn(int fromInRank, int fromInFile, int toInRank, int toInFile)
-    {   // TODO: return error instead of throw
+    {   
         if ( !isValidInCoord(fromInRank, fromInFile) || !isValidInCoord(toInRank, toInFile) ) 
-            throw new IllegalArgumentException("Invalid arguements for makeMove");
+            return INVALID_COORDINATE;
         // check if piece exist at "from" coord
         if ( mChessBoard[fromInRank][fromInFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
@@ -1106,6 +1151,13 @@ public class Game
     /* *************************************************
      * * * * Static Methods * * * 
      * *************************************************/
+    
+    public static int convertChessRankFromAlgebraic(String coord)
+    { return  Character.getNumericValue(coord.toLowerCase().charAt(1)); }
+    
+    public static int convertChessFileFromAlgebraic(String coord)
+    { return (int)coord.toLowerCase().charAt(0) - (int)'a' + 1; }
+    
     // conversion methods
     private static int convertInRankFromAlgebraic(String coord)
     {   return  Character.getNumericValue(coord.toLowerCase().charAt(1)) - 1; }
@@ -1315,11 +1367,34 @@ public class Game
                 convertInFileFromAlgebraic(square) );
     }
 
+    /**
+     * Test if a square is occupied
+     * @param fromRank 1-8
+     * @param fromFile 1-8
+     * @return true or false
+     */
     public boolean isSquareOccupied(int fromRank, int fromFile)
-    {
+    {   if (!Game.isValidChessCoord(fromRank,fromFile)) return false;
         int r = convertInRankFromChessRank(fromRank);
         int f = convertInFileFromChessFile(fromFile);
         return mChessBoard[r][f] != null;
+    }
+
+    /**
+     * Returns the piece at specified square, or null if the square is empty
+     * @param chessRank 1-8
+     * @param chessFile 1-8
+     * @throws IllegalArgumentException
+     * @return ChessPiece reference or null
+     */
+    public ChessPiece getPieceAt(int chessRank, int chessFile)
+    {
+        if ( !Game.isValidChessCoord(chessRank,chessFile) )
+            throw new IllegalArgumentException("No such square."); 
+        
+        int r = convertInRankFromChessRank(chessRank);
+        int f = convertInFileFromChessFile(chessFile);
+        return mChessBoard[r][f];
     }
     
     
@@ -1424,6 +1499,17 @@ public class Game
         { return validateMoveIn(square.inRank, square.inFile); }
         
         /**
+         * Validates a move given a target square
+         * @param coord algebraic coordinate of target square
+         * @return move code
+         */
+        public int validateMove(String coord)
+        {   return validateMoveIn(
+                    Game.convertChessRankFromAlgebraic(coord),
+                    Game.convertChessFileFromAlgebraic(coord)  );
+        }
+        
+        /**
          * MAKES THE MOVE! after validating the move by calling validateMove
          * @param rank value from 0-7
          * @param file value from 0-7
@@ -1431,12 +1517,17 @@ public class Game
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        //public int makeMove(int rank, int file, char promotionType)
-        //{return -1;} // TODO: implement
+        public int makeMove(int rank, int file, char promotionType)
+        {   return makeMoveIn(
+                    Game.convertInRankFromChessRank(rank),
+                    Game.convertInFileFromChessFile(file), promotionType );
+        } 
+
+        
         protected int makeMoveIn(int inRank, int inFile, char promotionType)
         {
             //System.out.println("Promotion type: " + promotionType); // DEBUG
-            return makeMoveIn(inRank, inFile);
+            return makeMoveIn(inRank, inFile, promotionType);
         }
         
         
@@ -1447,8 +1538,11 @@ public class Game
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        //public int makeMove(int rank, int file)
-        //{return -1;} // TODO: implement
+        public int makeMove(int rank, int file)
+        {   return makeMoveIn(
+                    Game.convertInRankFromChessRank(rank),
+                    Game.convertInFileFromChessFile(file)  );
+        } 
         
         protected int makeMoveIn(int inRank, int inFile)
         {
@@ -1499,15 +1593,19 @@ public class Game
         }
         
         
+        // TODO: update doc
         /**
          * Validates a move.
-         * @param rank value from 0-7
-         * @param file value from 0-7
+         * @param chessRank value from 0-7
+         * @param chessFile value from 0-7
          * @return MOVE_LEGAL (100) if its a good move, 
          *                otherwise returns error code
          */
-        //public int validateMove(int rank, int file)
-        //{return -1;}    // TODO: implement
+        public int validateMove(int chessRank, int chessFile)
+        {   return validateMoveIn(
+                    Game.convertInRankFromChessRank(chessRank),
+                    Game.convertInFileFromChessFile(chessFile)  );
+        }
         
         protected int validateMoveIn(int inRank, int inFile)
         {
@@ -1515,7 +1613,7 @@ public class Game
             //       so moves don't need to be re-evaluated
             
             if ( !isValidInCoord(inRank, inFile) )
-                throw new IllegalArgumentException("Invalid Coordinate");
+                return INVALID_COORDINATE;
             
             // square cannot be occupied by own piece
             if ( mChessBoard[inRank][inFile] != null
@@ -1578,12 +1676,15 @@ public class Game
                     Game.convertInFileFromAlgebraic(coord) ); }
         
         /**
-         * Set the starting position
-         * @param rank 0-7
-         * @param file 0-7
+         * Sets the starting position
+         * @param rank 1-8
+         * @param file 1-8
          */
-        //public void setStartPosition(int rank, int file)
-        //{} // TODO: implement
+        public void setStartPosition(int rank, int file)
+        {   setStartPositionIn(
+                       Game.convertInRankFromChessRank(rank),
+                       Game.convertInFileFromChessFile(file)  );
+        } 
         
         private void setStartPositionIn(int inRank, int inFile)
         {
@@ -1651,13 +1752,15 @@ public class Game
         }
         
         /**
-         * Returns true if the piece is observing (attacking) a square
+         * Returns PIECE_IS_OBSERVING if true
          * @param chessRank value from 1-8
          * @param chessFile value from 1-8
-         * @return true or false
+         * @return Game.PIECE_IS_OBSERVING or an int move Code
          */
         public int isObserving(int chessRank, int chessFile)
-        {   // TODO: validate range
+        {   if (!Game.isValidChessCoord(chessRank, chessFile))
+                return Game.INVALID_COORDINATE;
+        
             return isObservingIn( convertInRankFromChessRank(chessRank),
                 convertInFileFromChessFile(chessFile) ); }
         
@@ -2326,7 +2429,7 @@ public class Game
         protected int validateMoveIn(int rank, int file) 
         {
             if ( !isValidInCoord(rank, file) )
-                throw new IllegalArgumentException("Invalid Coordinate");
+                return INVALID_COORDINATE;
             
             // square cannot be occupied by own piece
             if ( mChessBoard[rank][file] != null
@@ -2373,6 +2476,7 @@ public class Game
                         return MOVE_ILLEGAL;
                     if ( mChessBoard[inRank][file].getType() != PAWN )
                         return MOVE_ILLEGAL;
+                    // we know its a pawn on our 5th rank, possible E.P. check last move
                     ChessPiece neighborPawn = mChessBoard[inRank][file];
                     RecordOfMove lastMove = mChessHistory.get( mChessHistory.size() - 1 );
                     if ( lastMove.PieceMoved != neighborPawn )
@@ -2381,13 +2485,8 @@ public class Game
                         return MOVE_ILLEGAL_LATE_EN_PASSANT;
                     captured = neighborPawn;
                     enPassant = true;
-                        
-                    
-                    //if ( mChessBoard[mRank][file].getCol
-                    //or && mChessBoard[mRank][file].getType )
                     // if en passant square is an enemy pawn, 
                     //and its just moved two square, E.P. is OK
-                    
                 } else if ( mChessBoard[rank][file].getColor() == Color ) {
                     return MOVE_ILLEGAL_SQUARE_OCCUPIED;
                 }
@@ -2476,7 +2575,6 @@ public class Game
     {
         // TODO: prepare to be serializable
         // TODO: have method to convert piece reference to string with starting square
-        // TODO: consider moving RecordOfMove outside of Chess class
         final public int moveNumber;
         final public int whoseTurn;
         final public String movePrefix; // "1. " or "1... "
@@ -2674,7 +2772,10 @@ public class Game
             this.inFile = inFile;
         }
         
-        // TODO: implement public getRank() and getFile() to return external coords
+        public int getRank()
+        { return Game.convertChessRankFromInRank(inRank); }
+        public int getFile()
+        { return Game.convertChessFileFromInFile(inFile); }
         
         @Override
         public String toString()

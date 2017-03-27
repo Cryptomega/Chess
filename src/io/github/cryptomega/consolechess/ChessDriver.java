@@ -252,6 +252,7 @@ public class ChessDriver
 
     private static void debug(Game myGame)
     {
+        
          // DEBUG Premoves
          ///*
          String[] movelist = {
@@ -289,7 +290,16 @@ public class ChessDriver
         "e2 h5", "e5 h5",
         "e1 e2", "h5 e2",
         "g1 h1", "e2 h2",
-        "h1 h2", "d1 d2"
+        "h1 h2", 
+                // illegal moves
+                 "d1 d2",
+                 "h3 h4",
+                 "g8 h3",
+                 "g8 g7",
+        "h2 g2",
+        "h2 g6",
+        "h2 h3"
+                 
          };
         for (String move : movelist)
         {
@@ -306,23 +316,27 @@ public class ChessDriver
             //myGame.makeMove(fromRank, fromFile, toRank, toFile);
             //myGame.makeMove(move);
             
-            if ( !myGame.isSquareOccupied(fromRank,fromFile) ) 
-            {
-                    System.out.println("WRONG!");
-            }
+            // extra DEBUG print line
+            Game.ChessPiece movingPiece = myGame.getPieceAt(fromRank,fromFile);
+            //int code = myGame.validateMove(fromRank, fromFile, toRank, toFile);
+            int code;
+            
+            
             
             char promo = ' '; 
             if ( move.length() >= 7) promo = move.charAt(6);
-            if ( move.length() >= 7)
-            {
-                
-                myGame.makeMove(fromRank,fromFile, toRank,toFile, promo);
+            if ( movingPiece == null ) {
+                code = Game.MOVE_ILLEGAL_SQUARE_EMPTY;
+            } else if ( move.length() >= 7) {
+                code = movingPiece.makeMove(toRank, toFile, promo);
             } else {
-                myGame.makeMove(fromRank,fromFile, toRank,toFile);
+                code = movingPiece.makeMove(toRank, toFile);
             }
+            System.out.println(Game.getMoveCodeText(code));
         }
         
-        System.out.println( myGame.getCompleteMoveHistory() );
+        //System.out.println( myGame.getCompleteMoveHistory() );
+
         //*/ // END DEBUG
     }
 

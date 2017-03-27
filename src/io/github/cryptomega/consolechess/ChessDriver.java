@@ -29,7 +29,7 @@ public class ChessDriver
         // setup and start the chess game
         Game myGame = new Game();
         myGame.setupStandardGame();
-        myGame.setStartTime(10, 10);
+        myGame.setStartTime(0, 0);
         myGame.startGame();
         
         // register listener
@@ -82,6 +82,10 @@ public class ChessDriver
                 case "COPY":
                 case "ANALYZE":
                     analyze( myGame );
+                    continue;
+                case "TAKEBACK":
+                    while( myGame.takebackMove() ) {}
+                    //myGame.takebackMove();
                     continue;
                 default:
                     break;
@@ -258,16 +262,16 @@ public class ChessDriver
         "a1 c1", "d1 b3",
         "a7 c7", "c8 e6",
         "c7 e5", "h8 g8",
-        //"f1 f3", "b3 f3",
-        //"h1 g1", "f3 e4",
-        //"h2 h3", "e6 h3",
-        //"h5 e2", "e4 e5",
-        //"c1 e1", "h7 h5",
-        //"e2 h5", "e5 h5",
-        //"e1 e2", "h5 e2"
+        "f1 f3", "b3 f3",
+        "h1 g1", "f3 e4",
+        "h2 h3", "e6 h3",
+        "h5 e2", "e4 e5",
+        "c1 e1", "h7 h5",
+        "e2 h5", "e5 h5",
+        "e1 e2", "h5 e2",
         //"g1 h1", "e2 h2",
         //"h1 h2",
-                 
+        // */
          };
         for (String move : movelist)
         {
@@ -359,6 +363,7 @@ public class ChessDriver
         @Override
         public void onPromote(ChessPiece piece, ChessPiece promoted)
         {
+            promoted.addPieceListener(new MyPieceListener() );
             System.out.println("[CP]"+piece.getUnicode() + " has promoted.");
         }
     }

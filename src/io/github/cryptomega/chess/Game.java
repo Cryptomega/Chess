@@ -1426,9 +1426,69 @@ public class Game
         // minor pieces are all counted
         if ( wBishopCount >= 2 || bBishopCount >= 2 ) return false; // if 2 bishops found no draw
         if ( wKnightCount >= 1 && wBishopCount >= 1 ) return false; // w can win with B and N
-        if ( bKnightCount >= 1 && bBishopCount >= 1 ) return false; // b can win with B and N
+        return !( bKnightCount >= 1 && bBishopCount >= 1 );  // b can win with B and N
+    }
+
+    /**
+     * You know you shouldn't ever use this
+     * @return true if move successfully taken back
+     */
+    public boolean takebackMove()
+    {
+        if ( mChessHistory.isEmpty() ) return false; // no moves to take back
+                
+        RecordOfMove move = mChessHistory.get( mChessHistory.size() - 1 );
         
-        return true; 
+        // DEBUG
+        System.out.println("TAKEBACK: " + move.getFullMoveText());
+        
+        ChessPiece moved = move.PieceMoved;  // get the moved piece
+        moved.setPositionIn(move.fromInRank, move.fromInFile ); // move it back
+        // TODO: for chess960 make sure it works if king's returning square is were the rook is
+        moved.MoveCount--; // take away its move count
+        mChessBoard[move.toInRank][move.toInFile] = null;
+        
+        
+        ChessPiece promo = move.PiecePromoted;  // deactive any promoted piece
+        if ( promo != null )
+        {
+            promo.isActive = false;
+            promo.Status = PIECE_NOT_ACTIVE;
+            mChessBoard[promo.inRank][promo.inFile] = null;
+            promo.updateListeners();
+        }
+        
+        ChessPiece captured = move.PieceCaptured; // restore any captured piece
+        if ( captured != null )
+        {
+            captured.setPositionIn(captured.inRank, captured.inFile);
+            //captured.isActive = true;
+            //captured.Status = PIECE_ACTIVE;
+            //mChessBoard[captured.inRank][captured.inFile] = captured;
+        }
+
+        ChessPiece castled = move.RookCastled; // return any castled rooks
+        if ( castled != null )
+        {
+            mChessBoard[castled.inRank][castled.inFile] = null;
+            castled.setPositionIn(castled.StartInRank, castled.StartInFile );
+            castled.MoveCount--;
+            
+        }
+        
+        // TODO: reverse game state changes
+        isGameActive = true;
+        GameWhoseTurn = ( GameWhoseTurn == WHITE ) ? BLACK : WHITE;
+        GameState = ( GameWhoseTurn == WHITE ) ? STATUS_WHITES_TURN : STATUS_BLACKS_TURN;
+        GameTurnCount--;
+        GameWhiteOffersDraw = false;
+        GameBlackClaimsDraw = false;
+        //GameWhiteTimeLeft     // you don't get any time back you cheater!
+        //GameBlackTimeLeft
+
+        // remove the record
+        mChessHistory.remove( mChessHistory.size() - 1 );
+        return true;
     }
     
     
@@ -1561,7 +1621,7 @@ public class Game
         protected int makeMoveIn(int inRank, int inFile, char promotionType)
         {
             //System.out.println("Promotion type: " + promotionType); // DEBUG
-            return makeMoveIn(inRank, inFile, promotionType);
+            return makeMoveIn(inRank, inFile);
         }
         
         
@@ -1882,6 +1942,13 @@ public class Game
         {
             if ( !mPieceListeners.isEmpty() )
                 mPieceListeners.clear();
+        }
+
+        private void updateListeners()
+        {
+            if ( mPieceListeners != null )
+                for ( PieceListener listener : mPieceListeners )
+                    listener.onUpdate(this);
         }
 
 

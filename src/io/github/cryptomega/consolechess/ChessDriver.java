@@ -26,8 +26,6 @@ public class ChessDriver
      */
     public static void main(String[] args)
     {
-
-        
         // setup and start the chess game
         Game myGame = new Game();
         myGame.setupStandardGame();
@@ -48,12 +46,11 @@ public class ChessDriver
        // DEBUG
        debug(myGame);
         
-        // game loop
-        while ( true )
+        OUTER:
+        while (true)
         {
             if ( !myGame.isGameActive() )
                 System.out.print("GAME OVER: ");
-            
             System.out.print(myGame.getGameStatus());
             int secs = (int)myGame.getSecondsRemaining(myGame.getWhoseTurn() );
             System.out.println( "   " + secs + " secs remaining");
@@ -61,71 +58,50 @@ public class ChessDriver
             ChessPiece[][] board = myGame.getBoard();
             printBoard(board);
             
-
-            // get input            
-            System.out.print("Enter move(00 to exit):");
+            System.out.println("Options <RESTART|DRAW|RESIGN|ANALYZE|EXIT> ");
+            System.out.print("Enter move:");
             input = scanner.nextLine();
-            
-            if ( !myGame.isGameActive() )
-            {
-                System.out.print("exit or restart?:");
-                input = scanner.nextLine();
-            }
-                
-            if ( input.toUpperCase().equals("REFRESH") )
-                myGame.refreshListeners();
-                    
-            if ( input.toUpperCase().equals("RESTART") )
-            {   myGame.restartGame();
-                continue;
-            }
- 
-            // if user exits or game ends on time, exit loop
-            if ( input.equals("00") || input.toUpperCase().equals("EXIT") )
-            {   myGame.endGame();
-                break;       // exit
-            }
-
-            if ( input.toUpperCase().equals("COPY") 
-                    || input.toUpperCase().equals("ANALYZE") )
-            {
-                analyze( myGame );
-                continue;
-            }
-            
-            
-            /*
-            if ( input.length() == 2 )  // Get Valid moves
-            {   // get moves for piece
-                int rank = Game.convertAlgebraicToInternalRank(input);
-                int file = Game.convertAlgebraicToInternalFile(input);
-                if ( !Game.isValidCoord(rank,file) )
-                {
-                    System.out.println(" > > > ERROR: Invalid location < < <");
+            input = input.toUpperCase();
+            switch (input) {
+                case "REFRESH":
+                    myGame.refreshListeners();
+                    break;
+                case "RESTART":
+                    myGame.restartGame();
                     continue;
-                }
-                ChessPiece piece = board[rank][file];
-                printCandidateMoves(piece);
+                case "DRAW":
+                    myGame.draw();
+                    continue;
+                case "RESIGN":
+                    myGame.resign();
+                    continue;
+                case "00":
+                case "EXIT":
+                    myGame.endGame();
+                    break OUTER; // exit
+                case "COPY":
+                case "ANALYZE":
+                    analyze( myGame );
+                    continue;
+                default:
+                    break;
+            }
+            if ( !myGame.isGameActive() ) {
+                System.out.println("Game is inactive");
                 continue;
             }
-            */
             
-            int code;    // makeMove response code
+            int code;
             try { code = myGame.makeMove(input); }
             catch (Exception e) 
             {
                 System.out.println(" > > > ERROR:" + e.getMessage() + " < < <");
                 continue;
             }
-            
-            // DEBUG
-             System.out.println( myGame.getCompleteMoveHistory() );
-            
-            // DEBUG System.out.println("\n");
+            System.out.println( myGame.getCompleteMoveHistory() );
             System.out.println(" > > > " 
                     + Game.getMoveCodeText(code)
                     + " ("+code+") < < <");
-            //break; // DEBUG
         }
     }
     
@@ -282,23 +258,15 @@ public class ChessDriver
         "a1 c1", "d1 b3",
         "a7 c7", "c8 e6",
         "c7 e5", "h8 g8",
-        "f1 f3", "b3 f3",
-        "h1 g1", "f3 e4",
-        "h2 h3", "e6 h3",
-        "h5 e2", "e4 e5",
-        "c1 e1", "h7 h5",
-        "e2 h5", "e5 h5",
-        "e1 e2", "h5 e2",
-        "g1 h1", "e2 h2",
-        "h1 h2", 
-                // illegal moves
-                 "d1 d2",
-                 "h3 h4",
-                 "g8 h3",
-                 "g8 g7",
-        "h2 g2",
-        "h2 g6",
-        "h2 h3"
+        //"f1 f3", "b3 f3",
+        //"h1 g1", "f3 e4",
+        //"h2 h3", "e6 h3",
+        //"h5 e2", "e4 e5",
+        //"c1 e1", "h7 h5",
+        //"e2 h5", "e5 h5",
+        //"e1 e2", "h5 e2"
+        //"g1 h1", "e2 h2",
+        //"h1 h2",
                  
          };
         for (String move : movelist)
@@ -393,7 +361,5 @@ public class ChessDriver
         {
             System.out.println("[CP]"+piece.getUnicode() + " has promoted.");
         }
-        
     }
-    
 }

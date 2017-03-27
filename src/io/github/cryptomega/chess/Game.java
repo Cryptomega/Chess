@@ -138,12 +138,7 @@ public class Game
      *          it can be a Game State code 
      */
     private void endTurn(int StateCode)
-    {
-        // DEBUG
-        //System.out.println("endTurn called");
-
-        // updates and state variables
-        switch (StateCode)
+    {   switch (StateCode) // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
         {
             case PLAYER_OK:
                 GameState = (GameWhoseTurn == WHITE) ? 
@@ -183,23 +178,18 @@ public class Game
                 GameState = STATUS_DRAW_AGREEMENT;
                 isGameActive = false;
                 break;
-        }
-        
-        // TODO: implement more game state checks
+        }  // TODO: implement more game state checks
 
-        // transitions turn to other player
+        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
         GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
-        GameTurnCount++;
+        GameTurnCount++; // transitions turn to other player, increment turn count
         
-        // switch over clock
-        if( isTimedGame && GameTimer != null )
+        if ( this.drawByInsufficientMaterial() )
         {
-            if ( isGameActive )
-                GameTimer.switchTimer();
-            else
-                GameTimer.stopTimer();
+            GameState = STATUS_DRAW_MATERIAL;
+            isGameActive = false;
         }
-         
+            
         // TODO: implement draws claim check
         // checkForDraw();
         //      if player wants to claim draw,
@@ -208,10 +198,16 @@ public class Game
 
         // checks for draw conditions
         // updates game state for wins, draws
+        
+        // switch over clock
+        if( isTimedGame && GameTimer != null )
+        {   if ( isGameActive )
+                GameTimer.switchTimer();
+            else
+                GameTimer.stopTimer();
+        }
 
-        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES
-        
-        
+        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
         // reset draw flag as player's turn is starting, after draw claim checked
         if ( GameWhoseTurn == WHITE )
             GameWhiteOffersDraw = false;
@@ -650,7 +646,8 @@ public class Game
      * @param player either Game.WHITE or Game.BLACK
      */
     public void resign(int player)
-    {  
+    {   
+        if ( !this.isGameActive ) return;
         if ( player == WHITE )
             endTurn(STATUS_BLACK_WINS_RESIGNATION);
         else if ( player == BLACK )
@@ -661,14 +658,14 @@ public class Game
      * The current player offers/claims a draw
      */
     public void draw()
-    { draw(GameWhoseTurn ); }
+    {   draw(GameWhoseTurn ); }
     
     /**
      * Player offers/claims a draw
      * @param player color of offering player. either Game.WHITE or Game.BLACK
      */
     public void draw(int player)
-    {
+    {   if ( !this.isGameActive ) return;
         if ( player == WHITE ) {
             GameWhiteOffersDraw = true;
             if ( GameBlackClaimsDraw )
@@ -1242,7 +1239,9 @@ public class Game
              case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
                 return "Black claims drawy by fifty move rule.";   
             case STATUS_DRAW_AGREEMENT:
-                return "Draw by agreement.";    
+                return "Draw by agreement.";  
+            case STATUS_DRAW_MATERIAL:
+                return "Draw by Insufficient Material.";
             default:
                 return "Unknown Game State.";   
         }
@@ -1395,6 +1394,41 @@ public class Game
         int r = convertInRankFromChessRank(chessRank);
         int f = convertInFileFromChessFile(chessFile);
         return mChessBoard[r][f];
+    }
+
+    private boolean drawByInsufficientMaterial()
+    {
+        int wBishopCount = 0;   // bishop counters
+        int bBishopCount = 0;
+        int wKnightCount = 0;   // bishop counters
+        int bKnightCount = 0;
+        for (ChessPiece piece : mChessPieces )  // scan all pieces
+        {
+            if (piece.isActive == false) continue;  // skip inactive pieces
+            if (piece.Type == KING) continue; // skip the kings
+            if (piece.Type == QUEEN || piece.Type == ROOK || piece.Type == PAWN )
+                return false;   // any of these pieces active means its not a draw
+            
+            // count bishops
+            if (piece.Type == BISHOP)
+            {
+                if ( piece.getColor() == WHITE ) wBishopCount++;
+                else bBishopCount++;
+            }
+            // count knights
+            if (piece.Type == KNIGHT)
+            {
+                if ( piece.getColor() == WHITE ) wKnightCount++;
+                else bKnightCount++;
+            }
+        }
+        
+        // minor pieces are all counted
+        if ( wBishopCount >= 2 || bBishopCount >= 2 ) return false; // if 2 bishops found no draw
+        if ( wKnightCount >= 1 && wBishopCount >= 1 ) return false; // w can win with B and N
+        if ( bKnightCount >= 1 && bBishopCount >= 1 ) return false; // b can win with B and N
+        
+        return true; 
     }
     
     

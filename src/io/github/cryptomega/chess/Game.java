@@ -10,7 +10,6 @@ import java.util.HashMap;
 
 
 
-// TODO: add public methods commented throughout refactored code
 
 /**
  *  Chess
@@ -99,8 +98,6 @@ public class Game
     public static final int STATUS_DRAW_MATERIAL =           815;
     public static final int STATUS_DRAW_WHITE_STALEMATE =    816;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    817;
-    
-
     
 
 
@@ -221,7 +218,6 @@ public class Game
             pushGameOverUpdate();
     }
     
-    
     /************************************************
      * The Chess Board -  This board using an internal
      * coordinate system, [inRank][inFile]
@@ -229,24 +225,24 @@ public class Game
      * Cells contain reference to the occupying 
      * chess piece, or null if the square is empty.
      ***********************************************/
-    private final ChessPiece[][] mChessBoard =
-            new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES]; // TODO: refactor
-    
-    
+    private final ChessPiece[][] GameBoard =
+            new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES]; 
+
     /* *************************************************
      * * * * ArrayList of all chess pieces * * * 
      * *************************************************/
-    private final ArrayList<ChessPiece> mChessPieces;  // TODO: refactor
-    
+    private final ArrayList<ChessPiece> GamePieces;  
     
     /* *************************************************
      * * * * History ArrayList * * * 
      * ************************************************/
-    private final ArrayList<RecordOfMove> mChessHistory; // TODO: refactor
+    private final ArrayList<RecordOfMove> GameHistory; 
+
+    /* *************************************************
+     * * * * Game State Listeners * * * 
+     * ************************************************/
+    private ArrayList<GameListener> GameStateListeners; 
     
-    
-    // Game State Listeners
-    private ArrayList<GameListener> mGameStateListeners; // TODO: refactor
     
     /** ************************************************
      * * * * Constructor * * * 
@@ -257,9 +253,9 @@ public class Game
      * *************************************************/
     public Game()
     {
-        mChessPieces = new ArrayList<>();
-        mChessHistory = new ArrayList<>();
-        mGameStateListeners = new ArrayList<>();
+        GamePieces = new ArrayList<>();
+        GameHistory = new ArrayList<>();
+        GameStateListeners = new ArrayList<>();
         
         clearGame(); 
     }
@@ -313,9 +309,9 @@ public class Game
         this.GameBlackTimeLeft  = originalGame.GameBlackTimeLeft;  // time left in seconds
         
         // initialize lists
-        this.mChessPieces = new ArrayList<>();
-        this.mChessHistory = new ArrayList<>();
-        this.mGameStateListeners = new ArrayList<>();
+        this.GamePieces = new ArrayList<>();
+        this.GameHistory = new ArrayList<>();
+        this.GameStateListeners = new ArrayList<>();
         this.clearBoard();
         
         // create a HashMap
@@ -326,22 +322,22 @@ public class Game
         for ( ChessPiece origPiece : originalGame.getPieces() )
         {
             ChessPiece newPiece = this.copyPiece( origPiece );
-            this.mChessPieces.add( newPiece );
+            this.GamePieces.add( newPiece );
             
             hashmap.put(origPiece, newPiece);  // make the hash map
             
             if ( stealListeners )
-                newPiece.mPieceListeners = origPiece.mPieceListeners;
+                newPiece.PieceListeners = origPiece.PieceListeners;
         }
         
         // copy board with references mapped
         for (int r = 0; r < BOARD_NUMBER_RANKS; r++)
             for (int f = 0; f < BOARD_NUMBER_FILES; f++)
-               this.mChessBoard[r][f] = hashmap.get(originalGame.mChessBoard[r][f] );
+               this.GameBoard[r][f] = hashmap.get(originalGame.GameBoard[r][f] );
         
         // copy history with references mapped
-        for ( RecordOfMove originalRecord : originalGame.mChessHistory )
-            this.mChessHistory.add( new RecordOfMove(originalRecord, hashmap) );
+        for ( RecordOfMove originalRecord : originalGame.GameHistory )
+            this.GameHistory.add( new RecordOfMove(originalRecord, hashmap) );
 
         
         // disregard timer
@@ -349,7 +345,7 @@ public class Game
         this.GameTimer = null;
         
         // disregard listeners unless stealListeners = true
-        if ( stealListeners ) this.mGameStateListeners = originalGame.mGameStateListeners;
+        if ( stealListeners ) this.GameStateListeners = originalGame.GameStateListeners;
     }
     
         
@@ -390,14 +386,14 @@ public class Game
         public void refreshListeners()
         {
             // game state listeners
-            if ( mGameStateListeners != null )
-                for (  GameListener listener : mGameStateListeners )
+            if ( GameStateListeners != null )
+                for (  GameListener listener : GameStateListeners )
                     listener.onGameStateUpdate( new GameStats() );
             
             // piece listeners
-            for ( ChessPiece piece : this.mChessPieces )
-                if ( piece.mPieceListeners != null )
-                    for ( PieceListener listener : piece.mPieceListeners )
+            for ( ChessPiece piece : this.GamePieces )
+                if ( piece.PieceListeners != null )
+                    for ( PieceListener listener : piece.PieceListeners )
                         listener.onUpdate( piece );
                         
         }
@@ -450,7 +446,7 @@ public class Game
     { 
         ChessPiece[][] copy = new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
         for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
-            copy[i] = mChessBoard[i].clone();
+            copy[i] = GameBoard[i].clone();
         return copy;
     } 
     
@@ -459,7 +455,7 @@ public class Game
      * @return ArrayList containing references to the pieces
      */
     public ArrayList<ChessPiece> getPieces()
-        { return (ArrayList<ChessPiece>) mChessPieces.clone(); }
+        { return (ArrayList<ChessPiece>) GamePieces.clone(); }
     
     
     
@@ -468,7 +464,7 @@ public class Game
      * @param listener implements GameListener interface
      */
     public void addGameStateListener(GameListener listener)
-    { mGameStateListeners.add(listener); }
+    { GameStateListeners.add(listener); }
     
 
     
@@ -481,7 +477,7 @@ public class Game
     {
         StringBuilder history = new StringBuilder();
         boolean whitesTurn = true;
-        for ( RecordOfMove item : mChessHistory )
+        for ( RecordOfMove item : GameHistory )
         {
             if ( whitesTurn )
                 history.append(item.moveNumber).append(". ");
@@ -511,8 +507,8 @@ public class Game
         clearHistory();       // clear history
         
         // clear pieces array
-        if ( mChessPieces != null && !mChessPieces.isEmpty() )
-            mChessPieces.clear();
+        if ( GamePieces != null && !GamePieces.isEmpty() )
+            GamePieces.clear();
         WhiteKingIndex = -1;
         BlackKingIndex = -1;
     }
@@ -772,10 +768,10 @@ public class Game
         if ( !isValidInCoord(fromInRank, fromInFile) || !isValidInCoord(toInRank, toInFile) ) 
             return INVALID_COORDINATE;
         // check if piece exist at "from" coord
-        if ( mChessBoard[fromInRank][fromInFile] == null )
+        if ( GameBoard[fromInRank][fromInFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
         else
-            return mChessBoard[fromInRank][fromInFile].makeMoveIn(toInRank, toInFile);
+            return GameBoard[fromInRank][fromInFile].makeMoveIn(toInRank, toInFile);
     }
     
     
@@ -786,8 +782,8 @@ public class Game
      * @param toChessRank value from 1-8
      * @param toChessFile value from 1-8
      * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
-     * @return returns an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
-     *         and String Game.getMoveCodeText(Code)
+     * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
      */
     public int makeMove(int fromChessRank, int fromChessFile, 
             int toChessRank, int toChessFile, char promotionType )
@@ -803,10 +799,10 @@ public class Game
         if ( !isValidInCoord(fromRank, fromFile) || !isValidInCoord(toRank, toFile) )
             throw new IllegalArgumentException("Invalid arguements for makeMove");
         // call makeMove(rank,file,promotionType) on the chess piece!
-        if ( mChessBoard[fromRank][fromFile] == null )
+        if ( GameBoard[fromRank][fromFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
         else
-            return mChessBoard[fromRank][fromFile].makeMoveIn(toRank, toFile, promotionType);
+            return GameBoard[fromRank][fromFile].makeMoveIn(toRank, toFile, promotionType);
     }
     
     /**
@@ -833,7 +829,7 @@ public class Game
     private boolean isInCheck(int color, int inRank, int inFile)
     {
         
-        for ( ChessPiece piece : mChessPieces )
+        for ( ChessPiece piece : GamePieces )
         {
             // skip if color matches kings color, or if inactive
             if ( !piece.isActive || piece.getColor() == color )
@@ -858,7 +854,7 @@ public class Game
         
             // check for stalemate
             boolean playerHasValidMove = false;
-            for ( ChessPiece piece : mChessPieces )
+            for ( ChessPiece piece : GamePieces )
             {
                 if ( piece.getColor() != color )
                     continue;
@@ -912,10 +908,9 @@ public class Game
     {
         ArrayList<ChessPiece> cleanUpList = new ArrayList<>();
         
-        for( ChessPiece piece : mChessPieces )
+        for( ChessPiece piece : GamePieces )
         {
             piece.reset();
-            
             if ( !isValidInCoord(piece.StartInRank,piece.StartInFile) )
                 cleanUpList.add(piece); // save to clean up
         }
@@ -927,7 +922,7 @@ public class Game
             // may have promoted
             // get rid of it
             piece.releaseListeners(); // release listeners
-            mChessPieces.remove(piece); // remove the piece
+            GamePieces.remove(piece); // remove the piece
         }         
     }
     private void initTimer()    // initialize timer
@@ -940,15 +935,15 @@ public class Game
     private void clearHistory()
     {
         // clear history
-        if ( mChessHistory != null && !mChessHistory.isEmpty() )
-            mChessHistory.clear();
+        if ( GameHistory != null && !GameHistory.isEmpty() )
+            GameHistory.clear();
     }
     private void clearBoard()
     {
         // clear game board
         for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
             for (int j = 0; j < BOARD_NUMBER_FILES; j++)
-                mChessBoard[i][j] = null;
+                GameBoard[i][j] = null;
     }
     private void resetGameVariables()
     {
@@ -971,7 +966,7 @@ public class Game
      * pushes an update of the game state to all game state listeners
      */
     private void pushGameStateUpdate()
-    { for (GameListener listener : mGameStateListeners)
+    { for (GameListener listener : GameStateListeners)
             listener.onGameStateUpdate(new GameStats()); 
     }
     
@@ -979,7 +974,7 @@ public class Game
      * pushes an update of the game state to all game state listeners
      */
     private void pushGameOverUpdate()
-    { for (GameListener listener : mGameStateListeners)
+    { for (GameListener listener : GameStateListeners)
             listener.onGameOver(new GameStats()); 
     }
 
@@ -1001,7 +996,7 @@ public class Game
         ChessPiece checkingPiece = null;
         boolean doubleCheck = false;
 
-        for( ChessPiece piece : mChessPieces )
+        for( ChessPiece piece : GamePieces )
         {
             if ( !piece.isActive || piece.Color == color ) // skip is inactive or same color
                 continue;
@@ -1044,7 +1039,7 @@ public class Game
             }
             
             // check all pieces for captures or blocks
-            for( ChessPiece piece : mChessPieces )
+            for( ChessPiece piece : GamePieces )
             {
                 if ( !piece.isActive || piece.Color != color ) // skip is inactive or same color
                     continue;
@@ -1090,7 +1085,7 @@ public class Game
                 throw new IllegalArgumentException("Invalid piece type argument");
         }
 
-        mChessPieces.add(newPiece);
+        GamePieces.add(newPiece);
         return newPiece;
     }
     
@@ -1102,7 +1097,7 @@ public class Game
     {
         if ( !isValidInCoord(inRank,inFile) )
             throw new IllegalArgumentException("Invalid coordinate argument");
-        if ( mChessBoard[inRank][inFile] != null )  // position is already occupied!
+        if ( GameBoard[inRank][inFile] != null )  // position is already occupied!
             throw new IllegalStateException("Cannot add piece on occupied square");   
         ChessPiece newPiece = addPieceToGame(color, type);
         //if ( newPiece == null )
@@ -1119,7 +1114,7 @@ public class Game
         int index = getKingIndex(color);
         if (index == -1)
             throw new IllegalStateException("King not found!");
-        return mChessPieces.get(index);
+        return GamePieces.get(index);
     }
     
     private int getKingIndex(int color)
@@ -1129,9 +1124,9 @@ public class Game
             return kingIndex;
         
         
-        for (int i = 0; i < mChessPieces.size(); i++ )
-            if ( mChessPieces.get(i).getType() == KING
-                    && mChessPieces.get(i).getColor() == color )
+        for (int i = 0; i < GamePieces.size(); i++ )
+            if ( GamePieces.get(i).getType() == KING
+                    && GamePieces.get(i).getColor() == color )
             {
                 if ( color == WHITE)
                     WhiteKingIndex = i;
@@ -1191,7 +1186,7 @@ public class Game
                 Game.convertInFileFromAlgebraic(coord) ); 
     }
     
-    public static int getSquareColor(int inRank, int inFile) // TODO: make private
+    public static int getSquareColor(int inRank, int inFile) // TODO: make private or chess coords
     {   
         if ( !isValidInCoord(inRank, inFile) )
             throw new IllegalArgumentException("Invalid Coordinate");
@@ -1376,7 +1371,7 @@ public class Game
     {   if (!Game.isValidChessCoord(fromRank,fromFile)) return false;
         int r = convertInRankFromChessRank(fromRank);
         int f = convertInFileFromChessFile(fromFile);
-        return mChessBoard[r][f] != null;
+        return GameBoard[r][f] != null;
     }
 
     /**
@@ -1393,7 +1388,7 @@ public class Game
         
         int r = convertInRankFromChessRank(chessRank);
         int f = convertInFileFromChessFile(chessFile);
-        return mChessBoard[r][f];
+        return GameBoard[r][f];
     }
 
     private boolean drawByInsufficientMaterial()
@@ -1402,7 +1397,7 @@ public class Game
         int bBishopCount = 0;
         int wKnightCount = 0;   // bishop counters
         int bKnightCount = 0;
-        for (ChessPiece piece : mChessPieces )  // scan all pieces
+        for (ChessPiece piece : GamePieces )  // scan all pieces
         {
             if (piece.isActive == false) continue;  // skip inactive pieces
             if (piece.Type == KING) continue; // skip the kings
@@ -1434,60 +1429,47 @@ public class Game
      * @return true if move successfully taken back
      */
     public boolean takebackMove()
-    {
-        if ( mChessHistory.isEmpty() ) return false; // no moves to take back
+    {   if ( GameHistory.isEmpty() ) return false; // no moves to take back
                 
-        RecordOfMove move = mChessHistory.get( mChessHistory.size() - 1 );
+        RecordOfMove move = GameHistory.get( GameHistory.size() - 1 );
+        // System.out.println("TAKEBACK: " + move.getFullMoveText()); // DEBUG
         
-        // DEBUG
-        System.out.println("TAKEBACK: " + move.getFullMoveText());
-        
+        // move the piece back
         ChessPiece moved = move.PieceMoved;  // get the moved piece
-        moved.setPositionIn(move.fromInRank, move.fromInFile ); // move it back
-        // TODO: for chess960 make sure it works if king's returning square is were the rook is
+        GameBoard[move.fromInRank][move.fromInFile] = null; // for weird chess960 castles
+        moved.setPositionIn(move.fromInRank, move.fromInFile );
         moved.MoveCount--; // take away its move count
-        mChessBoard[move.toInRank][move.toInFile] = null;
-        
-        
+        GameBoard[move.toInRank][move.toInFile] = null;
+
         ChessPiece promo = move.PiecePromoted;  // deactive any promoted piece
         if ( promo != null )
-        {
-            promo.isActive = false;
+        {   promo.isActive = false;
             promo.Status = PIECE_NOT_ACTIVE;
-            mChessBoard[promo.inRank][promo.inFile] = null;
+            GameBoard[promo.inRank][promo.inFile] = null;
             promo.updateListeners();
         }
         
         ChessPiece captured = move.PieceCaptured; // restore any captured piece
         if ( captured != null )
-        {
-            captured.setPositionIn(captured.inRank, captured.inFile);
-            //captured.isActive = true;
-            //captured.Status = PIECE_ACTIVE;
-            //mChessBoard[captured.inRank][captured.inFile] = captured;
+        {   captured.setPositionIn(captured.inRank, captured.inFile);
         }
 
         ChessPiece castled = move.RookCastled; // return any castled rooks
         if ( castled != null )
-        {
-            mChessBoard[castled.inRank][castled.inFile] = null;
+        {   GameBoard[castled.inRank][castled.inFile] = null;
             castled.setPositionIn(castled.StartInRank, castled.StartInFile );
             castled.MoveCount--;
-            
         }
         
-        // TODO: reverse game state changes
         isGameActive = true;
         GameWhoseTurn = ( GameWhoseTurn == WHITE ) ? BLACK : WHITE;
         GameState = ( GameWhoseTurn == WHITE ) ? STATUS_WHITES_TURN : STATUS_BLACKS_TURN;
         GameTurnCount--;
         GameWhiteOffersDraw = false;
-        GameBlackClaimsDraw = false;
-        //GameWhiteTimeLeft     // you don't get any time back you cheater!
-        //GameBlackTimeLeft
+        GameBlackClaimsDraw = false; // you don't get any time back you cheater!
 
         // remove the record
-        mChessHistory.remove( mChessHistory.size() - 1 );
+        GameHistory.remove( GameHistory.size() - 1 );
         return true;
     }
     
@@ -1514,7 +1496,7 @@ public class Game
         protected int StartInFile = -1;
         
         // Listeners
-        protected ArrayList<PieceListener> mPieceListeners;
+        protected ArrayList<PieceListener> PieceListeners; 
         
         //********************************************************
         // TODO: implement editing mode
@@ -1528,7 +1510,7 @@ public class Game
          */
         protected ChessPiece(int color, char type)
         {
-            mPieceListeners = new ArrayList<>();
+            PieceListeners = new ArrayList<>();
             if ( color != WHITE && color != BLACK ) // validate color 
                 throw new IllegalArgumentException("Invalid color.");
             Color = color;
@@ -1561,14 +1543,14 @@ public class Game
          * @param listener 
          */
         public void addPieceListener(PieceListener listener)
-        { mPieceListeners.add(listener); }
+        { PieceListeners.add(listener); }
         
         /**
          * Makes a move given the algebraic coordinate of target square
          * @param coord algebraic coordinate to move to, along with promotion 
          *              if needed. ex: "e4", "c1", "b8=Q"
-         * @return MOVE_LEGAL (100) if its a good move, 
-         *                otherwise returns error code
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int makeMove(String coord)
         {
@@ -1579,7 +1561,8 @@ public class Game
         /**
          * Makes a move given a target square
          * @param square object representing target square
-         * @return move code
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int makeMove(Square square)
         { return makeMoveIn(square.inRank, square.inFile); }
@@ -1587,7 +1570,8 @@ public class Game
         /**
          * Validates a move given a target square
          * @param square object representing target square
-         * @return move code
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int validateMove(Square square)
         { return validateMoveIn(square.inRank, square.inFile); }
@@ -1595,7 +1579,8 @@ public class Game
         /**
          * Validates a move given a target square
          * @param coord algebraic coordinate of target square
-         * @return move code
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int validateMove(String coord)
         {   return validateMoveIn(
@@ -1605,11 +1590,11 @@ public class Game
         
         /**
          * MAKES THE MOVE! after validating the move by calling validateMove
-         * @param rank value from 0-7
-         * @param file value from 0-7
+         * @param rank value from 1-8
+         * @param file value from 1-8
          * @param promotionType The piece to promote to. QUEEN, BISHOP, KNIGHT, ROOK
-         * @return MOVE_LEGAL (100) if its a good move, 
-         *                otherwise returns error code
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int makeMove(int rank, int file, char promotionType)
         {   return makeMoveIn(
@@ -1626,11 +1611,11 @@ public class Game
         
         
         /**
-         * MAKES THE MOVE! after validating the move by calling validateMove
-         * @param rank value from 0-7
-         * @param file value from 0-7
-         * @return MOVE_LEGAL (100) if its a good move, 
-         *                otherwise returns error code
+         * MAKES THE MOVE!
+         * @param rank value from 1-8
+         * @param file value from 1-8
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int makeMove(int rank, int file)
         {   return makeMoveIn(
@@ -1657,7 +1642,7 @@ public class Game
             if ( code != MOVE_LEGAL ) return code;
 
             // capture piece, if any
-            ChessPiece captured = mChessBoard[inRank][inFile];
+            ChessPiece captured = GameBoard[inRank][inFile];
             if ( captured != null )
                 captured.captured();
             
@@ -1675,7 +1660,7 @@ public class Game
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
            
             // add move to mChessHistory (pass coordinates of previous square)
-            mChessHistory.add(new RecordOfMove(
+            GameHistory.add(new RecordOfMove(
                     this, fromInRank, fromInFile,
                     captured, null, 
                     check, checkmate        ) );
@@ -1687,13 +1672,13 @@ public class Game
         }
         
         
-        // TODO: update doc
+
         /**
          * Validates a move.
-         * @param chessRank value from 0-7
-         * @param chessFile value from 0-7
-         * @return MOVE_LEGAL (100) if its a good move, 
-         *                otherwise returns error code
+         * @param chessRank value from 1-8
+         * @param chessFile value from 1-8
+         * @return returns an integer move Code. You can use isMoveCodeLegal(Code)
+     *         and getMoveCodeText(Code)
          */
         public int validateMove(int chessRank, int chessFile)
         {   return validateMoveIn(
@@ -1710,8 +1695,8 @@ public class Game
                 return INVALID_COORDINATE;
             
             // square cannot be occupied by own piece
-            if ( mChessBoard[inRank][inFile] != null
-                    && mChessBoard[inRank][inFile].getColor() == Color )
+            if ( GameBoard[inRank][inFile] != null
+                    && GameBoard[inRank][inFile].getColor() == Color )
                 return MOVE_ILLEGAL_SQUARE_OCCUPIED;
             
             // piece must be observing the square
@@ -1728,7 +1713,7 @@ public class Game
             int fromInFile = this.inFile;  // and file
             
             // (1) get piece to be captured, if any
-            ChessPiece captured = mChessBoard[inRank][inFile];
+            ChessPiece captured = GameBoard[inRank][inFile];
             if ( captured != null )
                 captured.isActive = false;     // temporarily deactivate
             updatePositionIn(inRank,inFile);   // (1)temporarily move the piece
@@ -1737,7 +1722,7 @@ public class Game
             
             // undo temporary move (3)
             updatePositionIn(fromInRank, fromInFile);
-            mChessBoard[inRank][inFile] = captured;
+            GameBoard[inRank][inFile] = captured;
             if ( captured != null )
                 captured.isActive = true;
             
@@ -1752,10 +1737,10 @@ public class Game
         {
             isActive = false;
             Status = PIECE_CAPTURED;
-            mChessBoard[inRank][inFile] = null;
+            GameBoard[inRank][inFile] = null;
             // call chess piece listener function
-            if ( mPieceListeners != null )
-                for ( PieceListener listener : mPieceListeners )
+            if ( PieceListeners != null )
+                for ( PieceListener listener : PieceListeners )
                     listener.onCapture(this);
             // DEBUG:
             //System.out.println(this.getName()+ " has been captured!");
@@ -1801,17 +1786,17 @@ public class Game
                 throw new IllegalArgumentException("Illegal arguement for setPosition");
 
             // check if square is already occupied
-            if ( mChessBoard[inRank][inFile] != null )
+            if ( GameBoard[inRank][inFile] != null )
                 throw new IllegalStateException("Cannot set piece on occupied square");
             
             this.inRank = inRank;
             this.inFile = inFile;
-            mChessBoard[inRank][inFile] = this;
+            GameBoard[inRank][inFile] = this;
             Status = PIECE_ACTIVE;
             isActive = true;
 
-            if ( mPieceListeners != null )
-                for ( PieceListener listener : mPieceListeners )
+            if ( PieceListeners != null )
+                for ( PieceListener listener : PieceListeners )
                     listener.onUpdate(this);
         }
         
@@ -1819,9 +1804,9 @@ public class Game
         protected void updatePositionIn(int inRank, int inFile)
         {
             // set current position to null
-            mChessBoard[this.inRank][this.inFile] = null;
+            GameBoard[this.inRank][this.inFile] = null;
             // set reference to this piece at new square
-            mChessBoard[inRank][inFile] = this;
+            GameBoard[inRank][inFile] = this;
             // set the position in the piece
             this.inRank = inRank;
             this.inFile = inFile;
@@ -1840,8 +1825,8 @@ public class Game
             updatePositionIn(inRank, inFile);
             
             // call liseners
-            if ( mPieceListeners != null )
-                for ( PieceListener listener : mPieceListeners )
+            if ( PieceListeners != null )
+                for ( PieceListener listener : PieceListeners )
                     listener.onMove(this);
         }
         
@@ -1866,7 +1851,7 @@ public class Game
          * @return true or false
          */
         public boolean hasValidMove()
-        {
+        {   if ( !isActive ) return false;
             for ( Square square : getCandidateMoves() )
                 if ( isMoveCodeLegal( validateMove(square) ) )
                     return true;
@@ -1918,19 +1903,7 @@ public class Game
         {
             if ( !isValidInCoord(StartInRank,StartInFile) )
             {
-                // piece was not added to a starting square  
-                // originnaly with addPieceToGame()
-                // may have promoted
                 isActive = false;
-                /*
-                // get rid of it
-                // DEBUG:
-                System.out.println("Piece.reset is removing junk piece "+mChessPieces.size());
-                releaseListeners(); // release listeners
-                mChessPieces.remove(this); // DEBUG TEST
-                // DEBUG:
-                System.out.println("Piece.reset size after removing: "+ mChessPieces.size());
-                */
             } else {
                 // Resets the piece to its starting position
                 MoveCount = 0;
@@ -1940,14 +1913,14 @@ public class Game
         
         public void releaseListeners()
         {
-            if ( !mPieceListeners.isEmpty() )
-                mPieceListeners.clear();
+            if ( !PieceListeners.isEmpty() )
+                PieceListeners.clear();
         }
 
         private void updateListeners()
         {
-            if ( mPieceListeners != null )
-                for ( PieceListener listener : mPieceListeners )
+            if ( PieceListeners != null )
+                for ( PieceListener listener : PieceListeners )
                     listener.onUpdate(this);
         }
 
@@ -1986,13 +1959,13 @@ public class Game
                 return false;
             if ( inRank != rank )
                 return false;
-            if ( mChessBoard[rank][file] != null && 
-                 mChessBoard[rank][file].getColor() != Color )
+            if ( GameBoard[rank][file] != null && 
+                 GameBoard[rank][file].getColor() != Color )
                 return false;
             if ( abs(inFile - file) == 2 )
                 return true;
-            return ( mChessBoard[rank][file] != null && 
-                     mChessBoard[rank][file].getType() == ROOK );
+            return ( GameBoard[rank][file] != null && 
+                     GameBoard[rank][file].getType() == ROOK );
         }
                 
         @Override
@@ -2068,7 +2041,7 @@ public class Game
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
             
              //  change this call
-            mChessHistory.add(new RecordOfMove(
+            GameHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     castlingRook,
                     check, checkmate        ) );
@@ -2087,9 +2060,9 @@ public class Game
             
             for ( int i = kingFile + sign; (i >= 0 && i < BOARD_NUMBER_FILES); i += sign )
             {
-                if ( mChessBoard[toRank][i] != null && 
-                        mChessBoard[toRank][i].getType() == ROOK )
-                    return mChessBoard[toRank][i];
+                if ( GameBoard[toRank][i] != null && 
+                        GameBoard[toRank][i].getType() == ROOK )
+                    return GameBoard[toRank][i];
             }
             return null;
         }
@@ -2130,7 +2103,7 @@ public class Game
             }
             // check squares in range for impeded
             for (int i = minFile; i <= maxFile; i++)
-            {   ChessPiece square = mChessBoard[rank][i];
+            {   ChessPiece square = GameBoard[rank][i];
                 if ( square == null )
                     continue;
                 if ( square != this && square != castlingRook )
@@ -2138,9 +2111,9 @@ public class Game
             }
 
             // temporarily deactive rook
-            if ( mChessBoard[rank][rookFile] != castlingRook)
+            if ( GameBoard[rank][rookFile] != castlingRook)
                 return MOVE_ILLEGAL;
-            mChessBoard[rank][rookFile] = null;
+            GameBoard[rank][rookFile] = null;
             
             // check for checks
             minFile = isCastlingKingside ? kingFile : toKingFile;
@@ -2154,7 +2127,7 @@ public class Game
             }
             
             // re-activate rook
-            mChessBoard[rank][rookFile] = castlingRook;
+            GameBoard[rank][rookFile] = castlingRook;
             
             if ( throughCheck ) return ILLEGAL_CASTLE_THROUGH_CHECK;
             return isCastlingKingside ? MOVE_LEGAL_CASTLE_KINGSIDE : MOVE_LEGAL_CASTLE_QUEENSIDE;     
@@ -2227,7 +2200,7 @@ public class Game
                 {
                     // Look at square (mRank), (mFile + s*i)
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(rank, mFile+s*i)); // DEBUG
-                    if ( mChessBoard[inRank][inFile+s*i] != null )
+                    if ( GameBoard[inRank][inFile+s*i] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING;
@@ -2237,7 +2210,7 @@ public class Game
                 for (int i = 1; abs(d+i*s) > 0; i++)
                 {
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+s*i, mFile)); // DEBUG
-                    if( mChessBoard[inRank+s*i][inFile] != null )
+                    if( GameBoard[inRank+s*i][inFile] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING;
@@ -2250,7 +2223,7 @@ public class Game
                 {
                     // look at square (mRank + s*i), (mFile + s*i)
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+sl*s*i, mFile+s*i)); // DEBUG
-                    if( mChessBoard[inRank+sl*s*i][inFile+s*i] != null )
+                    if( GameBoard[inRank+sl*s*i][inFile+s*i] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING; 
@@ -2293,7 +2266,7 @@ public class Game
                 {
                     // Look at square (mRank), (mFile + s*i)
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(rank, mFile+s*i)); // DEBUG
-                    if ( mChessBoard[inRank][inFile+s*i] != null )
+                    if ( GameBoard[inRank][inFile+s*i] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING;
@@ -2303,7 +2276,7 @@ public class Game
                 for (int i = 1; abs(d+i*s) > 0; i++)
                 {
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+s*i, mFile)); // DEBUG
-                    if( mChessBoard[inRank+s*i][inFile] != null )
+                    if( GameBoard[inRank+s*i][inFile] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING;
@@ -2345,7 +2318,7 @@ public class Game
                 {
                     // look at square (mRank + s*i), (mFile + s*i)
                     //System.out.println("isObserving Checking " + Chess.convertInternalToAlgebraic(mRank+sl*s*i, mFile+s*i)); // DEBUG
-                    if( mChessBoard[inRank+sl*sign*i][inFile+sign*i] != null )
+                    if( GameBoard[inRank+sl*sign*i][inFile+sign*i] != null )
                         return MOVE_ILLEGAL_IMPEDED;
                 }
                 return PIECE_IS_OBSERVING; 
@@ -2464,9 +2437,9 @@ public class Game
             // capture piece, if any
             ChessPiece captured;
             if ( code == MOVE_LEGAL_EN_PASSANT )
-                captured = mChessBoard[this.inRank][inFile];
+                captured = GameBoard[this.inRank][inFile];
             else
-                captured = mChessBoard[inRank][inFile];
+                captured = GameBoard[inRank][inFile];
             if ( captured != null )
                 captured.captured();
             
@@ -2482,12 +2455,14 @@ public class Game
                 // promoting
                 isActive = false;
                 Status = PIECE_PROMOTED;
-                mChessBoard[inRank][inFile] = null;
+                GameBoard[inRank][inFile] = null;
                 promotion.setPositionIn(inRank, inFile);
+                promotion.StartInRank = 8;
+                promotion.StartInFile = this.StartInFile;
                 
                 // call onPromoted callback
-                if ( mPieceListeners != null )
-                    for ( PieceListener listener : mPieceListeners )
+                if ( PieceListeners != null )
+                    for ( PieceListener listener : PieceListeners )
                         listener.onPromote(this,promotion);
             }
             // add promoted piece at rank,file, if needed
@@ -2498,19 +2473,15 @@ public class Game
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
             
-            
-            
-            
+
             //  pass promotion reference
             // add move to mChessHistory (pass coordinates of previous square)
-            mChessHistory.add(new RecordOfMove(
+            GameHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     captured, promotion, 
                     check, checkmate        ) );
             
-            
             endTurn(playerStateCode);
-            
             return code;
         }
         
@@ -2533,8 +2504,8 @@ public class Game
                 return INVALID_COORDINATE;
             
             // square cannot be occupied by own piece
-            if ( mChessBoard[rank][file] != null
-                    && mChessBoard[rank][file].getColor() == Color )
+            if ( GameBoard[rank][file] != null
+                    && GameBoard[rank][file].getColor() == Color )
                 return MOVE_ILLEGAL_SQUARE_OCCUPIED;
             
             
@@ -2544,7 +2515,7 @@ public class Game
             if ( (inFile == file) && (inRank + direction == rank ) )  
             {   
                 // moving forward one square
-                if ( mChessBoard[rank][file] != null )
+                if ( GameBoard[rank][file] != null )
                     return MOVE_ILLEGAL_PAWN_BLOCKED;
             } else if ( (inFile == file) && (inRank + 2*direction == rank ) ) { 
                 // moving forward two squares
@@ -2552,20 +2523,20 @@ public class Game
                     return MOVE_ILLEGAL;
                 if ( Color ==  BLACK && inRank != 6 )
                     return MOVE_ILLEGAL;
-                if ( mChessBoard[inRank + direction][file] != null )
+                if ( GameBoard[inRank + direction][file] != null )
                     return MOVE_ILLEGAL_PAWN_BLOCKED;
-                if ( mChessBoard[rank][file] != null )
+                if ( GameBoard[rank][file] != null )
                     return MOVE_ILLEGAL_PAWN_BLOCKED;
                 if ( MoveCount != 0 )
                     return MOVE_ILLEGAL_PAWN_HAS_MOVED;
                 
             } else if ( (abs(inFile - file) == 1) && (inRank + direction == rank) ) {
                 // capturing a piece
-                captured = mChessBoard[rank][file];
-                if ( mChessBoard[rank][file] == null )
+                captured = GameBoard[rank][file];
+                if ( GameBoard[rank][file] == null )
                 {
                     // nothing to capture unless en passant is possible
-                    if ( mChessBoard[inRank][file] == null ) // en passant square is empty
+                    if ( GameBoard[inRank][file] == null ) // en passant square is empty
                         return MOVE_ILLEGAL_NOTHING_TO_CAPTURE;
                     // check if we are on white's 5th rank
                     if ( Color == WHITE && inRank != 4 )
@@ -2573,13 +2544,13 @@ public class Game
                     // check if we are on black's 5th rank
                     if ( Color == BLACK && inRank != 3 )
                         return MOVE_ILLEGAL;
-                    if (  mChessBoard[inRank][file].getColor() == Color )
+                    if (  GameBoard[inRank][file].getColor() == Color )
                         return MOVE_ILLEGAL;
-                    if ( mChessBoard[inRank][file].getType() != PAWN )
+                    if ( GameBoard[inRank][file].getType() != PAWN )
                         return MOVE_ILLEGAL;
                     // we know its a pawn on our 5th rank, possible E.P. check last move
-                    ChessPiece neighborPawn = mChessBoard[inRank][file];
-                    RecordOfMove lastMove = mChessHistory.get( mChessHistory.size() - 1 );
+                    ChessPiece neighborPawn = GameBoard[inRank][file];
+                    RecordOfMove lastMove = GameHistory.get( GameHistory.size() - 1 );
                     if ( lastMove.PieceMoved != neighborPawn )
                         return MOVE_ILLEGAL_LATE_EN_PASSANT;
                     if ( lastMove.fromInRank != inRank + 2*direction )
@@ -2588,7 +2559,7 @@ public class Game
                     enPassant = true;
                     // if en passant square is an enemy pawn, 
                     //and its just moved two square, E.P. is OK
-                } else if ( mChessBoard[rank][file].getColor() == Color ) {
+                } else if ( GameBoard[rank][file].getColor() == Color ) {
                     return MOVE_ILLEGAL_SQUARE_OCCUPIED;
                 }
             } else {
@@ -2612,7 +2583,7 @@ public class Game
             {
                 captured.isActive = false;     // temporarily deactivate
                 if ( enPassant )
-                    mChessBoard[fromRank][file] = null;
+                    GameBoard[fromRank][file] = null;
             }
             updatePositionIn(rank,file);   // (1)temporarily move the piece
             
@@ -2624,9 +2595,9 @@ public class Game
             {
                 captured.isActive = true;
                 if ( enPassant )
-                    mChessBoard[fromRank][file] = captured;
+                    GameBoard[fromRank][file] = captured;
                 else
-                    mChessBoard[rank][file] = captured;
+                    GameBoard[rank][file] = captured;
                     
             }
             
@@ -2805,11 +2776,17 @@ public class Game
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
             
+            StringBuilder sb = new StringBuilder();
+            
             if ( castledRook.StartInFile < movedFromFile  )
-                moveText = " 0-0-0";
+                sb.append(" 0-0-0");
             else
-                moveText = "   0-0";
-            // TODO: use StringBuilder to add + or # if check or mate
+                sb.append("   0-0");
+            if ( checkmate )
+                sb.append("#");
+            else if ( check )
+                sb.append("+");
+            moveText = sb.toString();
         }
         
         /**
@@ -2987,7 +2964,7 @@ public class Game
             private double GameBlackTimeLeft;  // time left in seconds
             */
 
-            this.move = mChessHistory.get( mChessHistory.size() - 1 );
+            this.move = GameHistory.get( GameHistory.size() - 1 );
         }
     }
 

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 //import java.util.Arrays;
 import java.util.Scanner;
 
+//import chesspresso.pgn.PGNReader;
+
 import io.github.cryptomega.chess.Game;
 import io.github.cryptomega.chess.Game.ChessPiece;
 import io.github.cryptomega.chess.GameListener;
@@ -58,7 +60,7 @@ public class ChessDriver
             ChessPiece[][] board = myGame.getBoard();
             printBoard(board);
             
-            System.out.println("Options <RESTART|DRAW|RESIGN|ANALYZE|EXIT> ");
+            System.out.println("      <RESTART|DRAW|RESIGN|ANALYZE|EXIT>");
             System.out.print("Enter move:");
             input = scanner.nextLine();
             input = input.toUpperCase();

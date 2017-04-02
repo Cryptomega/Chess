@@ -31,7 +31,7 @@ public class ChessDriver
         // setup and start the chess game
         Game myGame = new Game();
         myGame.setupStandardGame();
-        myGame.setStartTime(0, 0);
+        myGame.setStartTime(10, 10);
         myGame.startGame();
         
         // register listener
@@ -45,23 +45,27 @@ public class ChessDriver
         String input;
         Scanner scanner = new Scanner(System.in);
         
-       // DEBUG
-       debug(myGame);
+       
         
         OUTER:
         while (true)
         {
             if ( !myGame.isGameActive() )
-                System.out.print("GAME OVER: ");
-            System.out.print(myGame.getGameStatus());
-            int secs = (int)myGame.getSecondsRemaining(myGame.getWhoseTurn() );
-            System.out.println( "   " + secs + " secs remaining");
+            {   System.out.println("GAME OVER: " + myGame.getGameStatus());
+            } else {
+                System.out.print( myGame.getMoveNumber() + ". " 
+                        +  myGame.getGameStatus() + "   ");
+                //int secs = (int)myGame.getSecondsRemaining();
+                System.out.println( myGame.getTimeLeft() );
+            }
+            
             
             ChessPiece[][] board = myGame.getBoard();
             printBoard(board);
             
             System.out.println("      <RESTART|DRAW|RESIGN|ANALYZE|EXIT>");
             System.out.print("Enter move:");
+            
             input = scanner.nextLine();
             input = input.toUpperCase();
             switch (input) {
@@ -89,6 +93,19 @@ public class ChessDriver
                     while( myGame.takebackMove() ) {}
                     //myGame.takebackMove();
                     continue;
+                case "REDO":
+                    while ( myGame.redo() ) {}
+                    //myGame.redo();
+                    continue;
+                case "DEBUG":       // DEBUG
+                    debug(myGame);
+                    continue;
+                case "SIG":
+                    System.out.println(myGame.getBoardPositionSignature());
+                    continue;
+                case "FEN":
+                    System.out.println( myGame.getFEN() );
+                    continue;
                 default:
                     break;
             }
@@ -104,7 +121,7 @@ public class ChessDriver
                 System.out.println(" > > > ERROR:" + e.getMessage() + " < < <");
                 continue;
             }
-            System.out.println( myGame.getCompleteMoveHistory() );
+            //System.out.println( myGame.getCompleteMoveHistory() );
             System.out.println(" > > > " 
                     + Game.getMoveCodeText(code)
                     + " ("+code+") < < <");
@@ -115,8 +132,7 @@ public class ChessDriver
     {
         //Game analysisGame = new Game(myGame, true);
         Game analysisGame = Game.copyGameAndStealListeners(myGame);
-        
-                
+   
         String input;
         Scanner scanner = new Scanner(System.in);
         
@@ -144,8 +160,7 @@ public class ChessDriver
             System.out.println(" > > > " 
                     + Game.getMoveCodeText(code)
                     + " ("+code+") < < <");
-            //break; // DEBUG
-
+            // DEBUG
         }
     }
     
@@ -213,6 +228,7 @@ public class ChessDriver
         System.out.print(" ");
         System.out.print("\u250C");
         for (int i = 0; i < 7; i++)
+            //System.out.print("\u2500\u2500\u252C");
             System.out.print("-\u2500-\u252C");
         System.out.println("-\u2500-\u2510");
     }
@@ -238,6 +254,7 @@ public class ChessDriver
          // DEBUG Premoves
          ///*
          String[] movelist = {
+
         "e2 e4", "e7 e5",
         "g1 f3", "g8 f6",
         "f1 c4", "f8 c5",
@@ -250,6 +267,7 @@ public class ChessDriver
         "b7 a8=q", "g7 g5",
         "b2 b3", "g5 g4",
         "f2 f4", "g4 f3",
+        
         "d3 d4", "c5 b6",
         "e1 g1", "d8 h4",
         "b1 c3", "f8 g8",
@@ -271,17 +289,78 @@ public class ChessDriver
         "c1 e1", "h7 h5",
         "e2 h5", "e5 h5",
         "e1 e2", "h5 e2",
-        //"g1 h1", "e2 h2",
-        //"h1 h2",
+        
+        
+        // repeat moves to test draw
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        /*
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        
+        
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        "g1 h1", "g8 h8",
+        "h1 g1", "h8 g8",
+        */
+        
+        
+        /*
+
         // */
          };
+         
         for (String move : movelist)
         {
-            
+            //System.out.println(move);
             int fromRank = 1 + (int)move.charAt(1) - (int)'1';
             int fromFile = 1 + (int)move.charAt(0) - (int)'a';
             //char fromFile = move.charAt(0);
-            
             int toRank = 1 + (int)move.charAt(4) - (int)'1';
             int toFile = 1 + (int)move.charAt(3) - (int)'a';
             //char toFile = move.charAt(3);
@@ -294,23 +373,19 @@ public class ChessDriver
             Game.ChessPiece movingPiece = myGame.getPieceAt(fromRank,fromFile);
             //int code = myGame.validateMove(fromRank, fromFile, toRank, toFile);
             int code;
-            
-            
-            
             char promo = ' '; 
             if ( move.length() >= 7) promo = move.charAt(6);
             if ( movingPiece == null ) {
                 code = Game.MOVE_ILLEGAL_SQUARE_EMPTY;
+
             } else if ( move.length() >= 7) {
                 code = movingPiece.makeMove(toRank, toFile, promo);
             } else {
                 code = movingPiece.makeMove(toRank, toFile);
             }
-            System.out.println(Game.getMoveCodeText(code));
+            System.out.println("DEBUG:" + Game.getMoveCodeText(code));
         }
-        
         //System.out.println( myGame.getCompleteMoveHistory() );
-
         //*/ // END DEBUG
     }
 

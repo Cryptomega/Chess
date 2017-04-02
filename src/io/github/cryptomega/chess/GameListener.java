@@ -23,6 +23,11 @@ package io.github.cryptomega.chess;
          * This function is called when the game ends;
          * @param update is a GameStateUpdate object 
          */
+        abstract public void onGameOver( Game.GameStats update );
+        
+        
+        /*
         default public void onGameOver( Game.GameStats update )
         { onGameStateUpdate( update ); }
+        */
     }

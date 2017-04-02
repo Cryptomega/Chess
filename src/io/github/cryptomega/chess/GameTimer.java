@@ -3,8 +3,6 @@
  */
 package io.github.cryptomega.chess;
 
-//import io.github.cryptomega.chess.Chess.TimerCallbackReceiver;
-//import io.github.cryptomega.chess.Game.TimerController;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -118,9 +116,6 @@ public class GameTimer implements TimerController
     
     private void update()
     {
-        // DEBUG
-        // System.out.println("GameTimer.run called.");
-        
         // decrement appropriate time variable
         double remaining;
         switch (mActivePlayer)

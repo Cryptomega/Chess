@@ -1,5 +1,7 @@
-/*
+/* 
  * 
+ * TODO: add header info
+ * @author Philip Schexnayder
  */
 package io.github.cryptomega.chess;
 
@@ -25,7 +27,7 @@ public class Game
     // Game Colors
     public static final int BLACK =  0;
     public static final int WHITE =  1;
-    public static final int NONE  = -1;
+    //public static final int NONE  = -1;
     
     public static final int BOARD_NUMBER_RANKS = 8;
     public static final int BOARD_NUMBER_FILES = 8;
@@ -91,8 +93,8 @@ public class Game
     public static final int STATUS_BLACK_WINS_TIME =         809;
     
     public static final int STATUS_DRAW_WHITE_CLAIMS_THREE = 810; // game is draw
-    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811; // TODO:
-    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; // TODO:
+    public static final int STATUS_DRAW_BLACK_CLAIMS_THREE = 811; 
+    public static final int STATUS_DRAW_WHITE_CLAIMS_FIFTY = 812; 
     public static final int STATUS_DRAW_BLACK_CLAIMS_FIFTY = 813;
     public static final int STATUS_DRAW_AGREEMENT =          814; 
     public static final int STATUS_DRAW_MATERIAL =           815;
@@ -136,14 +138,11 @@ public class Game
      */
     private void endTurn(int StateCode)
     {   switch (StateCode) // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
-        {
-            case PLAYER_OK:
-                GameState = (GameWhoseTurn == WHITE) ? 
-                        STATUS_BLACKS_TURN : STATUS_WHITES_TURN;
+        {   case PLAYER_OK:
+                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACKS_TURN : STATUS_WHITES_TURN;
                 break;
             case PLAYER_IN_CHECK:
-                GameState = (GameWhoseTurn == WHITE) ? 
-                        STATUS_BLACK_IN_CHECK : STATUS_WHITE_IN_CHECK;
+                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACK_IN_CHECK : STATUS_WHITE_IN_CHECK;
                 break;
             case PLAYER_IN_CHECKMATE:
                 GameState = (GameWhoseTurn == WHITE) ? 
@@ -175,36 +174,53 @@ public class Game
                 GameState = STATUS_DRAW_AGREEMENT;
                 isGameActive = false;
                 break;
+            case STATUS_DRAW_WHITE_CLAIMS_FIFTY:
+                GameState = STATUS_DRAW_WHITE_CLAIMS_FIFTY;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
+                GameState = STATUS_DRAW_BLACK_CLAIMS_FIFTY;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_WHITE_CLAIMS_THREE:
+                GameState = STATUS_DRAW_WHITE_CLAIMS_THREE;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_BLACK_CLAIMS_THREE:
+                GameState = STATUS_DRAW_BLACK_CLAIMS_THREE;
+                isGameActive = false;
+                break;
         }  // TODO: implement more game state checks
 
-        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
         GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
         GameTurnCount++; // transitions turn to other player, increment turn count
         
         if ( this.drawByInsufficientMaterial() )
-        {
-            GameState = STATUS_DRAW_MATERIAL;
+        {   GameState = STATUS_DRAW_MATERIAL;
             isGameActive = false;
         }
             
-        // TODO: implement draws claim check
-        // checkForDraw();
-        //      if player wants to claim draw,
-        //      check three fold repetition
-        //      check last fifty moves
+        // check draw claims
+        if ( GameWhiteOffersDraw || GameBlackClaimsDraw )
+            if ( drawFiftyMoves() )
+            {
+                isGameActive = false;
+                GameState = GameWhiteOffersDraw ? 
+                        STATUS_DRAW_WHITE_CLAIMS_FIFTY : STATUS_DRAW_BLACK_CLAIMS_FIFTY;
+            } else if ( drawThreefoldRepetition() ) {
+                isGameActive = false;
+                GameState = GameWhiteOffersDraw ? 
+                        STATUS_DRAW_WHITE_CLAIMS_THREE : STATUS_DRAW_BLACK_CLAIMS_THREE;
+            }        
+            
 
-        // checks for draw conditions
-        // updates game state for wins, draws
-        
-        // switch over clock
-        if( isTimedGame && GameTimer != null )
+        if( isTimedGame && GameTimer != null ) // switch over clock
         {   if ( isGameActive )
                 GameTimer.switchTimer();
             else
                 GameTimer.stopTimer();
         }
 
-        // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
         // reset draw flag as player's turn is starting, after draw claim checked
         if ( GameWhoseTurn == WHITE )
             GameWhiteOffersDraw = false;
@@ -212,10 +228,8 @@ public class Game
             GameBlackClaimsDraw = false;
         
         // calls game state listeners
-        if ( isGameActive )
-            pushGameStateUpdate();
-        else
-            pushGameOverUpdate();
+        if ( isGameActive ) pushGameStateUpdate();
+        else pushGameOverUpdate();
     }
     
     /************************************************
@@ -236,7 +250,11 @@ public class Game
     /* *************************************************
      * * * * History ArrayList * * * 
      * ************************************************/
-    private final ArrayList<RecordOfMove> GameHistory; 
+    private final ArrayList<RecordOfMove> GameHistory;
+    
+    // hold future moves if for navigating through moves
+    private final ArrayList<RecordOfMove> GameFuture;
+    
 
     /* *************************************************
      * * * * Game State Listeners * * * 
@@ -255,6 +273,7 @@ public class Game
     {
         GamePieces = new ArrayList<>();
         GameHistory = new ArrayList<>();
+        this.GameFuture = new ArrayList<>();
         GameStateListeners = new ArrayList<>();
         
         clearGame(); 
@@ -311,6 +330,7 @@ public class Game
         // initialize lists
         this.GamePieces = new ArrayList<>();
         this.GameHistory = new ArrayList<>();
+        this.GameFuture = new ArrayList<>();
         this.GameStateListeners = new ArrayList<>();
         this.clearBoard();
         
@@ -410,14 +430,33 @@ public class Game
     public int getWhoseTurn() { return GameWhoseTurn; }
     public int getMoveNumber() { return (2 + GameTurnCount) / 2; }
     
-    public double getSecondsRemaining(int color)
-    { return ( color ==  WHITE ) ? GameWhiteTimeLeft : GameBlackTimeLeft; }
+    public double getSecondsRemaining()
+    { return getSecondsRemaining(GameWhoseTurn); }
+    public double getSecondsRemaining(int player)
+    { return ( player ==  WHITE ) ? GameWhiteTimeLeft : GameBlackTimeLeft; }
+    
+    public String getTimeLeft()
+    { return getTimeLeft(GameWhoseTurn); }
+    public String getTimeLeft(int player)
+    {
+        double secs = ( player ==  WHITE ) ? GameWhiteTimeLeft : GameBlackTimeLeft;
+        int mins = ( (int)secs / 60 ) % 60;
+        int hours = ( (int)secs / (60*60) ) % 24;
+        int days = ( (int)secs / (60*60*24) );
+        StringBuilder sb = new StringBuilder();
+        if ( days > 0 ) sb.append(days).append("D:");
+        if (hours > 0 ) sb.append(String.format("%d:", hours));
+        sb.append( String.format("%02d:", mins) );
+        if ( secs <= 10 ) sb.append( String.format("%05.2f", secs % 60) );
+        else sb.append( String.format("%02.0f", secs % 60) );
+        return sb.toString();
+    }
     
     /**
      * @return string containing a description of the current game state.
      */
     public String getGameStatus() { return getGameStatusText(GameState); }
-    
+    public int getGameStateCode() { return this.GameState; }
     /**
      * Gets the winner of the game, if any
      * @return White, Black, or None
@@ -660,8 +699,20 @@ public class Game
      * Player offers/claims a draw
      * @param player color of offering player. either Game.WHITE or Game.BLACK
      */
-    public void draw(int player)
+    public void draw(int player)    
     {   if ( !this.isGameActive ) return;
+        // check for threefold repetition
+        if ( player == GameWhoseTurn && drawThreefoldRepetition() )
+        {
+            if (GameWhoseTurn == WHITE) endTurn(STATUS_DRAW_WHITE_CLAIMS_THREE);
+            else endTurn(STATUS_DRAW_BLACK_CLAIMS_THREE);
+            return;
+        } else if ( player == GameWhoseTurn && drawFiftyMoves() ) {
+            if (GameWhoseTurn == WHITE) endTurn(STATUS_DRAW_WHITE_CLAIMS_FIFTY);
+            else endTurn(STATUS_DRAW_BLACK_CLAIMS_FIFTY);
+            return;
+        }
+                
         if ( player == WHITE ) {
             GameWhiteOffersDraw = true;
             if ( GameBlackClaimsDraw )
@@ -1172,7 +1223,7 @@ public class Game
     private static int convertChessFileFromInFile(int inFile)
     {   return inFile + 1; }
     
-    private static String convertAlgebraicFromIn(int inRank, int inFile)
+    private static String convertAlgebraicFromIn(int inRank, int inFile) // TODO: return to private
     {   if ( !isValidInCoord(inRank, inFile) )
             throw new IllegalArgumentException("Invalid Coordinate");
         return ((char) (inFile+97)) + String.valueOf(inRank + 1);
@@ -1186,17 +1237,18 @@ public class Game
                 Game.convertInFileFromAlgebraic(coord) ); 
     }
     
-    public static int getSquareColor(int inRank, int inFile) // TODO: make private or chess coords
-    {   
-        if ( !isValidInCoord(inRank, inFile) )
-            throw new IllegalArgumentException("Invalid Coordinate");
-        return (inRank+inFile)%2; 
-    }
+    public static int getSquareColor(int rank, int file) 
+    { return (rank+file)%2; }
     
     public static boolean isMoveCodeLegal(int code)
     {   return code == MOVE_LEGAL || code == MOVE_LEGAL_EN_PASSANT
                 || code == MOVE_LEGAL_CASTLE_KINGSIDE 
                 || code == MOVE_LEGAL_CASTLE_QUEENSIDE ;
+    }
+    
+    public static boolean isGameStateCodeActive(int code)
+    {   return code == STATUS_WHITES_TURN || code == STATUS_BLACKS_TURN
+                || code == STATUS_WHITE_IN_CHECK || code == STATUS_BLACK_IN_CHECK;
     }
     
     public static String getGameStatusText(int code)
@@ -1226,19 +1278,20 @@ public class Game
             case STATUS_DRAW_BLACK_STALEMATE:
                 return "Black is stalemated!";
             case STATUS_DRAW_WHITE_CLAIMS_THREE:
-                return "White claims drawy by three-fold repetition.";
+                return "White claims draw by three-fold repetition.";
             case STATUS_DRAW_BLACK_CLAIMS_THREE:
-                return "Black claims drawy by three-fold repetition.";
+                return "Black claims draw by three-fold repetition.";
             case STATUS_DRAW_WHITE_CLAIMS_FIFTY:
-                return "White claims drawy by fifty move rule.";    
+                return "White claims draw by fifty move rule.";    
              case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
-                return "Black claims drawy by fifty move rule.";   
+                return "Black claims draw by fifty move rule.";   
             case STATUS_DRAW_AGREEMENT:
                 return "Draw by agreement.";  
             case STATUS_DRAW_MATERIAL:
                 return "Draw by Insufficient Material.";
             default:
                 return "Unknown Game State.";   
+                
         }
     }
     
@@ -1252,7 +1305,7 @@ public class Game
                 return "En Passant.";
             case MOVE_LEGAL_CASTLE_KINGSIDE:
                 return "Move is legal. Castling Kingside.";
-                case MOVE_LEGAL_CASTLE_QUEENSIDE:
+            case MOVE_LEGAL_CASTLE_QUEENSIDE:
                 return "Move is legal. Castling Queenside.";
             case MOVE_ILLEGAL:                
                 return "Not a legal move.";
@@ -1270,12 +1323,26 @@ public class Game
                 return "Square is already occupied";
             case MOVE_ILLEGAL_PAWN_BLOCKED:
                 return "Pawn is blocked";
+            case MOVE_ILLEGAL_PAWN_HAS_MOVED:
+                return "Pawn has already moved.";
+            case MOVE_ILLEGAL_NOTHING_TO_CAPTURE:
+                return "Pawn cannot capture there.";
+            case MOVE_ILLEGAL_LATE_EN_PASSANT:
+                return "Cannot En Passant.";
             case AMBIGUOUS_PROMOTION:
                 return "Promotion ambiguous.";
             case GAME_NOT_ACTIVE:
                 return "Game is not active.";
             case PIECE_NOT_ACTIVE:
                 return "Piece is not in play.";
+            case ILLEGAL_CASTLE_KING_HAS_MOVED:
+                return "King has moved, can no longer castle.";
+            case ILLEGAL_CASTLE_ROOK_HAS_MOVED:
+                return" Rook has moved, can no longer castle.";
+            case ILLEGAL_CASTLE_IMPEDED:
+                return "Castle impeded";
+            case INVALID_COORDINATE:
+                return "Invalid coordinate";
             default:
                 return "Unknown Code";
         }
@@ -1431,7 +1498,7 @@ public class Game
     public boolean takebackMove()
     {   if ( GameHistory.isEmpty() ) return false; // no moves to take back
                 
-        RecordOfMove move = GameHistory.get( GameHistory.size() - 1 );
+        RecordOfMove move = GameHistory.remove( GameHistory.size() - 1 );
         // System.out.println("TAKEBACK: " + move.getFullMoveText()); // DEBUG
         
         // move the piece back
@@ -1468,9 +1535,258 @@ public class Game
         GameWhiteOffersDraw = false;
         GameBlackClaimsDraw = false; // you don't get any time back you cheater!
 
-        // remove the record
-        GameHistory.remove( GameHistory.size() - 1 );
+        // remove the record, put it in future
+        GameFuture.add( move );
         return true;
+    }
+    
+    /**
+     * Redo a move after takeback()
+     * @return true unless no more moves remain
+     */
+    public boolean redo()
+    {   if ( GameFuture.isEmpty() ) return false; // no moves
+        RecordOfMove move = GameFuture.remove( GameFuture.size() - 1 );
+        System.out.println("redo: " + move.getFullMoveText()); // DEBUG
+        
+        if ( move.PieceCaptured != null ) move.PieceCaptured.captured(); // capture peice
+
+        if ( move.RookCastled != null )
+        {   // castling
+            if ( move.PieceMoved.inFile < move.RookCastled.inFile )
+            {          // castling kingside
+                move.PieceMoved.updateChessPieceIn(move.toInRank, 6);
+                move.RookCastled.updateChessPieceIn(move.toInRank, 5);
+            } else {   // castling queenside
+                move.PieceMoved.updateChessPieceIn(move.toInRank, 2);
+                move.RookCastled.updateChessPieceIn(move.toInRank, 3);                
+            }
+        } else {    // normal move
+            move.PieceMoved.updateChessPieceIn(move.toInRank, move.toInFile);
+        }
+        // remove the future move and put it in history
+        GameHistory.add( move );
+        
+        isGameActive = !(move.Checkmate) && !(move.Stalemate);
+        GameWhoseTurn = ( GameWhoseTurn == WHITE ) ? BLACK : WHITE;
+        GameState = ( GameWhoseTurn == WHITE ) ? STATUS_WHITES_TURN : STATUS_BLACKS_TURN;
+        GameTurnCount++;
+        GameWhiteOffersDraw = false;
+        GameBlackClaimsDraw = false;
+        return true;
+    }
+
+    private boolean drawFiftyMoves()
+    {
+        if (GameHistory.size() < 100) return false; // TODO: check initial halfMoves if loaded from FEN
+        for (int i = 1; i <= 100; i++)
+        {
+            RecordOfMove move = GameHistory.get( GameHistory.size() - i );
+            if ( move.PieceMoved.getType() == PAWN || move.PieceCaptured != null )
+                return false;
+        }
+        return true;  
+    }
+    
+    
+
+    private boolean drawThreefoldRepetition()
+    {
+        Game copy = new Game(this);
+        String currentBoard = copy.getBoardPositionSignature();
+        int repeats = 1;
+        System.out.println("CUR: " + currentBoard); //DEBUG
+        
+        while ( copy.takebackMove() )  // TODO: take back 2 moves at a time
+        {
+            RecordOfMove move = copy.GameFuture.get( copy.GameFuture.size() - 1 ); // get last move
+            // pawn moves or captures essentially resets the possible board positions
+            if ( move.PieceMoved.getType() == PAWN || move.PieceCaptured != null ) return false;
+            
+            String compareBoard = copy.getBoardPositionSignature();
+            System.out.println("SIG: " + compareBoard); //DEBUG
+            if ( currentBoard.equals(compareBoard) ) repeats++;
+            if ( repeats >= 3 ) return true;
+        }
+        return false;
+    }
+
+    /**
+     * creates a unique string based on the board position,
+     * according to threefold repetition rules
+     * 123
+     * WknXxXxXx
+     * 1 = indicates player to move. W for white and B for black
+     * 2 = indicates possible castling moves. n=none, k=kingside, q=queenside, b=both
+     * 3 = whether capture en passant is possible. n=none, otherwise file number of ep move
+     * Xx encodes a piece on a square
+     * @return string signature code, unique for board position with available moves
+    */  
+    public String getBoardPositionSignature()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append( ( GameWhoseTurn == WHITE ) ? 'W' : 'B'); // player to move
+                            // TODO: consider removing 
+        // check for caslting
+        sb.append( getCastleFEN( GameWhoseTurn ) );
+        // check for en passant
+        sb.append( getEPSignature() );
+        
+        // go through board
+        int i = 0;
+        int empty = 0;
+        for ( int r = 0; r < 8; r++)
+            for (int f =0; f < 8; f++ )
+            {
+                ChessPiece piece = GameBoard[r][f];
+                if (piece != null)
+                {
+                    if ( empty > 0 ) sb.append(empty);
+                    empty = 0;
+                    char type = piece.getType();
+                    if ( piece.getColor() == BLACK ) type = Character.toLowerCase(type);
+                    sb.append(type);
+                    //sb.append( (char)(i+'0') );
+                } else {
+                    empty++;
+                }
+                i++;
+            }
+        return sb.toString();
+    }
+
+    private String getCastleSignature(int player)
+    {
+        // TODO: implement
+        return "";
+    }
+    
+
+    private char getEPSignature()
+    {
+        // getEpFEN
+        int fifthRank = (GameWhoseTurn == WHITE) ? 4 : 3;
+        int epRank = (GameWhoseTurn == WHITE) ? 5 : 2;
+        for (int f = 0; f < 8; f++)
+        {
+            ChessPiece pawn = GameBoard[fifthRank][f];
+            if ( pawn != null && pawn.getType() == PAWN && pawn.getColor()== GameWhoseTurn )
+            {
+                if ( pawn.validateMoveIn(epRank, f-1) == MOVE_LEGAL_EN_PASSANT )
+                {   
+                    return Game.convertAlgebraicFromIn(fifthRank,f-1).charAt(0);
+                    
+                } else if ( pawn.validateMoveIn(epRank, f+1) == MOVE_LEGAL_EN_PASSANT )
+                {   
+                    return Game.convertAlgebraicFromIn(fifthRank,f+1).charAt(0);
+                }
+            }
+        }
+        return 'n';
+    }
+
+    public String getFEN()
+    {
+        // board position
+        StringBuilder sb = new StringBuilder( getBoardFEN() );
+        
+        if ( GameWhoseTurn == WHITE ) sb.append(" w "); // active player
+        else sb.append(" b ");
+        
+        // castling availibility
+        String white = getCastleFEN(WHITE);
+        String black = getCastleFEN(BLACK);
+        if ( !white.equals("-") )
+        {   sb.append(white);
+            if ( !black.equals("-") ) sb.append(black);
+        } else {
+            sb.append(black);
+        }
+        
+        sb.append(" ").append( getEpFEN() ).append(" "); // ep
+        sb.append(getHalfMoveClock()).append(" "); // half moves
+        sb.append(this.getMoveNumber()); // move number
+        return sb.toString();
+    }
+    
+    private String getCastleFEN(int player)
+    {
+        King king = (King)this.getKing( player );
+        ChessPiece kingRook = king.getCastlingRook(king.inRank, king.inFile+1);
+        ChessPiece queenRook = king.getCastlingRook(king.inRank, king.inFile-1);
+        if ( king.MoveCount != 0 ) return "-"; //cannot castle
+        boolean kingside = kingRook != null && kingRook.MoveCount == 0;
+        boolean queenside = queenRook != null && queenRook.MoveCount == 0;
+        if ( !kingside && !queenside ) return "-";
+        
+        StringBuilder sb = new StringBuilder();
+        if ( kingside )
+            if ( player == WHITE ) sb.append('K');
+            else sb.append('k');
+        if ( queenside )
+            if ( player == WHITE ) sb.append('Q');
+            else sb.append('q');
+        return sb.toString();
+    }
+
+    private String getBoardFEN()
+    {
+        StringBuilder sb = new StringBuilder();
+        for ( int r = BOARD_NUMBER_RANKS; r > 0; r-- )
+        {
+            int emptyCount = 0;
+            for ( int f = 1; f <= BOARD_NUMBER_FILES; f++ )
+            {
+                ChessPiece piece = this.getPieceAt(r, f);
+                if ( piece == null )
+                {   emptyCount++;
+                    continue;
+                }
+                if ( emptyCount > 0 )
+                {   sb.append(emptyCount);
+                    emptyCount = 0;
+                }
+                if ( piece.getColor() == WHITE )
+                    sb.append( piece.getType() );
+                else
+                    sb.append( Character.toLowerCase( piece.getType() ) );
+            }
+            if ( emptyCount > 0 ) sb.append(emptyCount);
+            if ( r != 1 ) sb.append('/');
+        }
+        return sb.toString();
+    }
+
+    private String getEpFEN()
+    {
+        int dir = (GameWhoseTurn == WHITE) ? 1 : -1;
+        RecordOfMove lastMove = getLastMove();
+        if ( lastMove == null ) return "-";
+        if ( lastMove.PieceMoved.Type == PAWN && lastMove.fromInRank == lastMove.toInRank + 2*dir )
+            return Game.convertAlgebraicFromIn(lastMove.toInRank+dir, lastMove.toInFile);
+        else
+            return "-";
+    }
+    
+    /**
+     * @return number of moves since capture or pawn move
+     */
+    private int getHalfMoveClock()
+    { 
+        if ( GameHistory.isEmpty() ) return 0;
+        int numMoves = GameHistory.size();
+        for (int i = 1; i <= numMoves; i++ )
+        {
+            RecordOfMove move = GameHistory.get( numMoves - i );
+            if ( move.PieceMoved.getType() == PAWN || move.PieceCaptured != null )
+                return i - 1;
+        }
+        return numMoves; // TODO: add initial halfMoves if loaded from FEN
+    }
+    
+    private RecordOfMove getLastMove()  // TODO: subsitute functions where possible
+    {   if ( GameHistory.isEmpty()  ) return null;
+        return GameHistory.get( GameHistory.size() - 1 );
     }
     
     
@@ -1641,29 +1957,32 @@ public class Game
             int code = validateMoveIn(inRank, inFile);
             if ( code != MOVE_LEGAL ) return code;
 
-            // capture piece, if any
-            ChessPiece captured = GameBoard[inRank][inFile];
-            if ( captured != null )
-                captured.captured();
-            
             // hold onto last location
             int fromInRank = this.inRank;
             int fromInFile = this.inFile;
             
+            //************ performValidatedMove ***********************
+            // capture piece, if any
+            ChessPiece captured = GameBoard[inRank][inFile];
+            if ( captured != null )
+                captured.captured();
+
             // set the new position and update mChessBoard
             updateChessPieceIn(inRank, inFile);
+            //******** end performValidatedMove ***********************
             
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( Color == WHITE ) ? BLACK : WHITE;
             int playerStateCode = checkPlayerState(opponentColor);
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            boolean stalemate = playerStateCode == Game.PLAYER_IN_STALEMATE;
            
             // add move to mChessHistory (pass coordinates of previous square)
             GameHistory.add(new RecordOfMove(
                     this, fromInRank, fromInFile,
                     captured, null, 
-                    check, checkmate        ) );
+                    check, checkmate, stalemate ) );
             
             //  call EndTurn()
             endTurn(playerStateCode);
@@ -1747,31 +2066,33 @@ public class Game
         }
         
         /**
-         * Sets the starting coordinate
+         * Sets the starting coordinate. Game must be inactive
          * @param coord a1, g4, etc
+         * @return true if start position set, false if unable to set
          */
-        public void setStartPosition(String coord)
-        { setStartPositionIn(convertInRankFromAlgebraic(coord),
-                    Game.convertInFileFromAlgebraic(coord) ); }
+        public boolean setStartPosition(String coord)
+        {   return setStartPositionIn(convertInRankFromAlgebraic(coord),
+                    Game.convertInFileFromAlgebraic(coord) ); 
+        }
         
         /**
          * Sets the starting position
          * @param rank 1-8
          * @param file 1-8
+         * @return true if start position set, false if unable to set
          */
-        public void setStartPosition(int rank, int file)
-        {   setStartPositionIn(
+        public boolean setStartPosition(int rank, int file)
+        {   return setStartPositionIn(
                        Game.convertInRankFromChessRank(rank),
                        Game.convertInFileFromChessFile(file)  );
         } 
         
-        private void setStartPositionIn(int inRank, int inFile)
-        {
-            if ( !isValidInCoord(inRank, inFile) )
-                throw new IllegalArgumentException("Illegal arguement for setStartPosition");
-            
+        private boolean setStartPositionIn(int inRank, int inFile)
+        {   if ( !isActive ) return false;
+            if ( !isValidInCoord(inRank, inFile) ) return false;
             StartInRank = inRank;
             StartInFile = inFile;
+            return true;
         }
         
         protected void setPosition(String coord)
@@ -1902,7 +2223,7 @@ public class Game
         private void reset()
         {
             if ( !isValidInCoord(StartInRank,StartInFile) )
-            {
+            {   // if no valid start position deactivate
                 isActive = false;
             } else {
                 // Resets the piece to its starting position
@@ -1964,6 +2285,8 @@ public class Game
                 return false;
             if ( abs(inFile - file) == 2 )
                 return true;
+            // in case of chess960, sometimes a player needs to initiate
+            // castling by moving king onto the rook
             return ( GameBoard[rank][file] != null && 
                      GameBoard[rank][file].getType() == ROOK );
         }
@@ -2039,16 +2362,15 @@ public class Game
             int playerStateCode = checkPlayerState(opponentColor);
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            boolean stalemate = playerStateCode == Game.PLAYER_IN_STALEMATE;
             
              //  change this call
             GameHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     castlingRook,
-                    check, checkmate        ) );
+                    check, checkmate, stalemate  ) );
 
-            
             endTurn(playerStateCode);
-            
             return code;
         }
         
@@ -2082,6 +2404,7 @@ public class Game
             if ( MoveCount != 0 ) return ILLEGAL_CASTLE_KING_HAS_MOVED;
             // get the rook
             ChessPiece castlingRook = getCastlingRook(rank,file);
+            if ( castlingRook == null ) return ILLEGAL_CASTLE_ROOK_HAS_MOVED;
             if ( !castlingRook.isActive ) return MOVE_ILLEGAL;
             // rook cannot have made a move already
             if ( castlingRook.MoveCount != 0 ) return ILLEGAL_CASTLE_ROOK_HAS_MOVED;
@@ -2433,8 +2756,7 @@ public class Game
                 promotion = addPieceToGame(Color,promotionType);
             }
             
-             //  implement en passant 
-            // capture piece, if any
+            // capture piece, if any. check for En Passant
             ChessPiece captured;
             if ( code == MOVE_LEGAL_EN_PASSANT )
                 captured = GameBoard[this.inRank][inFile];
@@ -2472,6 +2794,7 @@ public class Game
             int playerStateCode = checkPlayerState(opponentColor);
             boolean check = playerStateCode == PLAYER_IN_CHECK;
             boolean checkmate = playerStateCode == PLAYER_IN_CHECKMATE;
+            boolean stalemate = playerStateCode == Game.PLAYER_IN_STALEMATE;
             
 
             //  pass promotion reference
@@ -2479,7 +2802,7 @@ public class Game
             GameHistory.add(new RecordOfMove(
                     this, fromRank, fromFile,
                     captured, promotion, 
-                    check, checkmate        ) );
+                    check, checkmate, stalemate   ) );
             
             endTurn(playerStateCode);
             return code;
@@ -2656,13 +2979,15 @@ public class Game
         final private int toInRank, toInFile;
         // Captured piece. null if nothing captured
         final public ChessPiece PieceCaptured;
-        final private int capturedInRank, capturedInFile;
+        final public boolean EnPassant;    // true if pawn has captured en passant
+        //final private int capturedInRank, capturedInFile;
         // Piece promoted to. null if no promotion
         final public ChessPiece PiecePromoted;
         final public char promotionType;
         // Rook castled with. null if player didn't castle
         final public ChessPiece RookCastled;
-        final public boolean checkmate; // did this move produce checkmate
+        final public boolean Checkmate; // did this move produce checkmate
+        final public boolean Stalemate; // or stalemate
         
         /**
          * Gets a notational representation of the move
@@ -2681,8 +3006,11 @@ public class Game
         public int getFromFile() {return convertChessFileFromInFile(fromInFile);}
         public int getToRank() {return convertChessRankFromInRank(toInRank);}
         public int getToFile() {return convertChessFileFromInFile(toInFile);}
-        public int getCapturedRank() {return convertChessRankFromInRank(capturedInRank);}
-        public int getCapturedFile() {return convertChessFileFromInFile(capturedInFile);}
+        public int getCapturedRank()
+        {   if ( EnPassant ) return convertChessRankFromInRank(fromInRank);
+            else return convertChessRankFromInRank(toInRank);        
+        }
+        public int getCapturedFile() {return convertChessFileFromInFile(toInFile);}
  
         /**
          * Call after piece has moved and its position updated, before 
@@ -2697,7 +3025,7 @@ public class Game
          */
         private RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
                 ChessPiece captured, ChessPiece promo, 
-                boolean check, boolean checkmate)
+                boolean check, boolean checkmate, boolean stalemate)
         {
             PieceMoved = moved;
             fromInRank = movedFromRank;
@@ -2706,14 +3034,9 @@ public class Game
             toInFile = PieceMoved.inFile;
             
             PieceCaptured = captured;
-            if ( PieceCaptured != null )
-            {
-                capturedInRank = PieceCaptured.inRank;
-                capturedInFile = PieceCaptured.inFile;
-            } else {
-                capturedInRank = -1;
-                capturedInFile = -1;
-            }
+            // record en passant moves
+            EnPassant = PieceCaptured != null  && PieceCaptured.inRank != toInRank;
+
             
             PiecePromoted = promo;
             if ( PiecePromoted != null )
@@ -2722,7 +3045,8 @@ public class Game
                 promotionType = 'x';
             
             RookCastled = null;
-            this.checkmate = checkmate;
+            this.Checkmate = checkmate;
+            this.Stalemate = stalemate;
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
             
@@ -2755,7 +3079,7 @@ public class Game
          */
         private RecordOfMove(ChessPiece moved, int movedFromRank, int movedFromFile, 
                 ChessPiece castledRook, 
-                boolean check, boolean checkmate)
+                boolean check, boolean checkmate, boolean stalemate)
         {
             PieceMoved = moved;
             fromInRank = movedFromRank;
@@ -2768,11 +3092,11 @@ public class Game
                 throw new IllegalArgumentException("Called wrong RecordOfMove constructor");
             
             PieceCaptured = null;
-            capturedInRank = -1;
-            capturedInFile = -1;
+            EnPassant = false;
             PiecePromoted = null;
             promotionType = 'x';
-            this.checkmate = checkmate;
+            this.Checkmate = checkmate;
+            this.Stalemate = stalemate;
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
             
@@ -2805,12 +3129,12 @@ public class Game
             this.fromInRank = orig.fromInRank;
             this.fromInFile = orig.fromInFile;
             this.PieceCaptured   = hashmap.get( orig.PieceCaptured );
-            this.capturedInRank   = orig.capturedInRank ;
-            this.capturedInFile   = orig.capturedInFile ;
+            this.EnPassant   = orig.EnPassant;
             this.PiecePromoted   = hashmap.get( orig.PiecePromoted ) ;
             this.promotionType   = orig.promotionType ;
             this.RookCastled   = hashmap.get( orig.RookCastled ) ;
-            this.checkmate   = orig.checkmate ;
+            this.Checkmate   = orig.Checkmate;
+            this.Stalemate = orig.Stalemate;
         }
         
     }
@@ -2938,8 +3262,6 @@ public class Game
         public int gameStateCode;
         public String gameState;
         public String winner;
-        
-        
         
         /**
          * Packages information about the current game state

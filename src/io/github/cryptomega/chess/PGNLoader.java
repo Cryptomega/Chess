@@ -5,10 +5,15 @@
  */
 package io.github.cryptomega.chess;
 
+import static io.github.cryptomega.chess.Game.*;
+//import static io.github.cryptomega.chess.Game.getMoveCodeText;
+//import static io.github.cryptomega.chess.Game.isMoveCodeLegal;
 import com.supareno.pgnparser.PGNParser;
 import com.supareno.pgnparser.Parser;
 import com.supareno.pgnparser.jaxb.Games;
 import com.supareno.pgnparser.jaxb.Hit;
+
+
 import java.util.Iterator;
 import java.util.List;
 import org.apache.log4j.BasicConfigurator;
@@ -39,7 +44,7 @@ public class PGNLoader
     index = 0;
     
     LOGGER = Logger.getLogger ( PGNLoader.class );
-    LOGGER.debug ( getNumberOfGames() + " for pgn parsing" );
+    //LOGGER.debug ( getNumberOfGames() + " for pgn parsing" );
     }
 
     public final int getNumberOfGames()
@@ -48,20 +53,37 @@ public class PGNLoader
     public Game getNextGame()
     {
         Game myGame = new Game();
+        
         if ( !iter.hasNext() ) return myGame;
+        com.supareno.pgnparser.jaxb.Game aGame = iter.next();
+        
+        // get the match details // TODO: 
+        
+        // TODO: check FEN
+        
         myGame.setupStandardGame();
         myGame.startGame();
         
-        com.supareno.pgnparser.jaxb.Game aGame = iter.next();
+                
+        // go through all the moves
+        int i = 0;
         for ( Hit hit : aGame.getHits().getHit() )
         {
-            System.out.println( hit.getContent() );
+            //System.out.println( hit.getNumber() +"["+ hit.getContent() +"]"); // DEBUG
+            for ( String move : hit.getHitSeparated() )
+            {
+                
+                //System.out.print("."+ ++i + "[" + move +"]"); // DEBUG
+                int code = myGame.makeMove(move);
+                if ( !isMoveCodeLegal( code ) )
+                    System.out.println("DEBUG:ERROR LOADING MOVE: "+getMoveCodeText(code)); // DEBUG
+            }
         }
         // TODO: get game title
         
         // TODO: implement
         
-        LOGGER.debug( "end" );
+        //LOGGER.debug( "end" );
         
         return myGame;
     }

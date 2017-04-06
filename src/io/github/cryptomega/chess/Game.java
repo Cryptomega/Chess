@@ -106,36 +106,14 @@ public class Game
     public static final int STATUS_DRAW_WHITE_STALEMATE =    816;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    817;
     
-    //public static final String REGEX_CASTLE_QUEENSIDE = "O-O-O";
-    public static final String REGEX_CASTLE_QUEENSIDE = "[oO0][-_][oO0][-_][oO0]";
-    public static final String REGEX_CASTLE_KINGSIDE = "[oO0][-_][oO0]";
     public static final String REGEX_CASTLE = "[oO0](-[oO0])(\\1)?(.*)";
-    //public static final String REGEX_MOVE_e2e4 = "([a-h][1-8]).*([a-h][1-8])";
-    public static final String REGEX_MOVE_e2e4 = ".*([a-h][1-8]).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
-    public static final String REGEX_MOVE_Pee4 
+    public static final String REGEX_MOVE_FULL = ".*([a-h][1-8]).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
+    public static final String REGEX_MOVE_DISAMB 
             = "[^PRNBQKa-h]*([PRNBQK]?)([a-h1-8]?).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
-    //public static final String REGEX_PROMO = "=?([qbnrQBNR])(.*)"; // TODO: incorporate into REGEX_MOVE_Pee4 / REGEX_MOVE_e2e4
-    //public static final String REGEX_DISAMBIG = "([KQBNRP]?)([a-h1-8]?)"; // TODO: incorporate into REGEX_MOVE_Pee4 
-    
-    private Matcher matcherCastle = null;
-    private Matcher matchere2e4 = null;
-    private Matcher matcherPee4 = null;
-    //private Matcher matcherPromo = null;
-    //private Matcher matcherDisambig = null;
-    
-    /*
-    private Pattern ptrnCastle = null;
-    private Pattern ptrne2e4 = null;
-    private Pattern ptrnPee4 = null;
-    private Pattern ptrnPromo = null;
-    */
-    /*
-         * (1) try to match two coords: ([a-h][1-8]).*([a-h][1-8])
-     * (2) try disamgious coord: ([PRNBQK][a-h1-7]).*([a-h][1-8])
-     * (3) try normal match: ([PRNBQK])([a-h][1-8])
-     * (4) pawn move match: ([a-h][1-8])
-    */
 
+    private Matcher matcherCastle = null;
+    private Matcher matcherFull = null;
+    private Matcher matcherDisamb = null;
 
     /* ****************************************
      * * * Game State variables * * *
@@ -161,6 +139,12 @@ public class Game
     private TimerController GameTimer = null;
     //private boolean mIsChess960 = false;
     
+    // match details
+    protected String whitePlayer = "White";
+    protected String blackPlayer = "Black";
+    protected String GameResult = "*";
+    protected String startingFEN = "";
+    // TODO: implement more detail, update result on game finish
     
     
     /**
@@ -229,7 +213,7 @@ public class Game
         GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
         GameTurnCount++; // transitions turn to other player, increment turn count
         
-        if ( this.drawByInsufficientMaterial() )
+        if ( drawByInsufficientMaterial() )
         {   GameState = STATUS_DRAW_MATERIAL;
             isGameActive = false;
         }
@@ -458,6 +442,16 @@ public class Game
                         
         }
         
+        public void releaseListeners()
+        {
+            if ( GameStateListeners != null && !GameStateListeners.isEmpty() )
+                GameStateListeners.clear();
+            
+            // piece listeners
+            for ( ChessPiece piece : this.GamePieces )
+                piece.releaseListeners();
+        }
+        
         
     /* *************************************************
      * * * * Publfic Methods * * * 
@@ -521,7 +515,7 @@ public class Game
      * Get the chess board with references to the active pieces on it
      * @return Returns a 2d array of ChessPiece
      */
-    public ChessPiece[][] getBoard()    // TODO: make private
+    protected ChessPiece[][] getBoard()  
     { 
         ChessPiece[][] copy = new ChessPiece[BOARD_NUMBER_RANKS][BOARD_NUMBER_FILES];
         for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
@@ -575,9 +569,9 @@ public class Game
      * Clears the pieces array (mChessPieces)
      * Clears the history stack
      */
-    public final void clearGame()
+    public final void clearGame() // TODO: return current Game is success
     {
-        if ( isGameActive == true )
+        if ( isGameActive == true ) // TODO: soft fail by returning null
             throw new IllegalStateException("Cannot clear game while game is active");
         
         resetGameVariables(); // reset game state variables
@@ -585,6 +579,7 @@ public class Game
         clearBoard();         // clear game board
         clearHistory();       // clear history
         
+        // TODO: release listeners
         // clear pieces array
         if ( GamePieces != null && !GamePieces.isEmpty() )
             GamePieces.clear();
@@ -628,7 +623,8 @@ public class Game
     {
         // require mIsGameActive to be false 
         if ( isGameActive == true )
-            throw new IllegalStateException("Cannot setup game while game is active");
+            return; // soft fail
+            //throw new IllegalStateException("Cannot setup game while game is active");
 
         addPieceToGame(WHITE, KING, 0, 4 );
         addPieceToGame(WHITE, QUEEN, 0, 3 );
@@ -764,6 +760,9 @@ public class Game
         }
     }
     
+    public int makeMoveCastleKingside() { return ((King)getKing()).castleKingside(); }
+    public int makeMoveCastleQueenside() { return ((King)getKing()).castleQueenside(); }
+    
     /**
      * Makes a move on the board using algebraic coordinates.
      * @param move Ex: "a1-b2", "a1 a2", "e4xe5", "a7-a8=Q"
@@ -782,21 +781,23 @@ public class Game
     {
         if ( matcherCastle.reset(move).find() ) { // castling check
             
-            System.out.println("pattern Castle matched!["
-                    + matcherCastle.group(1)+"]["+matcherCastle.group(2)+"]["
-                    + matcherCastle.group(3) +"]"); //DEBUG   
-            // TODO: implement
-            King king = ((King)getKing());//.castle
+            //System.out.println("pattern Castle matched!["
+            //        + matcherCastle.group(1)+"]["+matcherCastle.group(2)+"]["
+            //        + matcherCastle.group(3) +"]"); //DEBUG   
+            if ( matcherCastle.group(2) == null )
+                return makeMoveCastleKingside();
+            else
+                return makeMoveCastleQueenside();
+
             
-        } else if ( matchere2e4.reset(move).matches() ) { // full coordinate check
+        } else if ( matcherFull.reset(move).matches() ) { // full coordinate check
             
-            String from = matchere2e4.group(1); // from location
-            String to = matchere2e4.group(2); // to location
-            System.out.println("pattern e2e4 matched!["+from+"]["+to+"]["
-                    + matchere2e4.group(3) +"]" ); //DEBUG   
+            String from = matcherFull.group(1); // from location
+            String to = matcherFull.group(2); // to location
+            //System.out.println("pattern e2e4 matched!["+from+"]["+to+"]["
+            //        + matchere2e4.group(3) +"]" ); //DEBUG   
             //matcherPromo.reset(  matchere2e4.group(3) );
-            
-            if ( matchere2e4.group(3).equals("") )
+            if ( matcherFull.group(3).equals("") )
                 return makeMoveIn(
                     convertInRankFromAlgebraic(from),
                     convertInFileFromAlgebraic(from),
@@ -808,41 +809,39 @@ public class Game
                     convertInFileFromAlgebraic(from),
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to), 
-                    matchere2e4.group(3).charAt(0) );
+                    matcherFull.group(3).charAt(0) );
             
             
-        } else if ( matcherPee4.reset(move).matches() ) {  // disambiguous check
+        } else if ( matcherDisamb.reset(move).matches() ) {  // disambiguous check
             
-            String piece = matcherPee4.group(1); // from piece
-            String loc = matcherPee4.group(2); // from location
-            String to = matcherPee4.group(3); // to location
-            String promo = matcherPee4.group(4);
+            String piece = matcherDisamb.group(1); // from piece
+            String loc = matcherDisamb.group(2); // from location
+            String to = matcherDisamb.group(3); // to location
+            String promo = matcherDisamb.group(4);
             
-            System.out.println("pattern Pee4 matched!["
-                    + piece + "][" + loc + "]["
-                    + to + "]["
-                    + promo +"]" ); //DEBUG
             
             ChessPiece p;
             try { p = this.matchPiece(piece, loc, to); }
             catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
             if ( p == null ) return MOVE_ILLEGAL;
-            System.out.println("Found: "+ p.getUnicode() + p.getPosition() );
+            
+            System.out.print("Found: "+ p.getUnicode() + p.getPosition());
+            System.out.println(" ["+piece+"]["+loc+"]["+to+"]["+promo+"]" ); //DEBUG
+            
             // check for promo, them p.makeMove
             //matcherPromo.reset(  matcherPee4.group(3) );
             if ( promo.equals("") )
-                p.makeMoveIn(
+                return p.makeMoveIn(
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to) );
             else
-                p.makeMoveIn(
+                return p.makeMoveIn(
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to),
                     promo.charAt(0) );
-                
-            
         }
-        return MOVE_ILLEGAL;
+        
+        return MOVE_ILLEGAL; // unrecognized move
     }
     
     
@@ -1880,9 +1879,9 @@ public class Game
         {
             // TODO: add piece disambiguoate matcher
             
-            matchere2e4 = Pattern.compile(REGEX_MOVE_e2e4).matcher("");
+            matcherFull = Pattern.compile(REGEX_MOVE_FULL).matcher("");
             matcherCastle = Pattern.compile(REGEX_CASTLE).matcher("");
-            matcherPee4 = Pattern.compile(REGEX_MOVE_Pee4).matcher("");    
+            matcherDisamb = Pattern.compile(REGEX_MOVE_DISAMB).matcher("");    
             //matcherPromo = Pattern.compile(REGEX_PROMO).matcher("");  
             //matcherDisambig = Pattern.compile(REGEX_DISAMBIG).matcher("");
         } catch(PatternSyntaxException pse) { // DEBUG
@@ -1928,12 +1927,24 @@ public class Game
             if ( disambigFile && piece.inFile != disambig ) continue;
             if ( disambigRank && piece.inRank != disambig ) continue;
             // can the piece see the target
-            if ( PIECE_IS_OBSERVING != piece.isObservingIn(
+            if ( type == PAWN )
+            {
+                Pawn pawn = ((Pawn)piece);
+                if ( !pawn.canMoveForward(to) && !pawn.canCapture(to) ) continue;
+
+            } else {
+                if ( PIECE_IS_OBSERVING != piece.isObservingIn(
                     convertInRankFromAlgebraic(to), convertInFileFromAlgebraic(to)) )
                 continue;  // skip if piece is not observing to square
+            }
+            
             // at this point, we have a hit
             if ( match != null ) 
+            {
+                // TODO: try to use validateMove to disambiguate
                 throw new IllegalArgumentException("Can not disambiguate move.");   // already had a hit, cannot disambiguate
+            }
+            
             match = piece;
         }
         return match;
@@ -2382,7 +2393,7 @@ public class Game
         
         public void releaseListeners()
         {
-            if ( !PieceListeners.isEmpty() )
+            if ( PieceListeners != null && !PieceListeners.isEmpty() )
                 PieceListeners.clear();
         }
 
@@ -2415,20 +2426,25 @@ public class Game
         { super(orig); }
 
         /**
-         * TODO: implement
          * castles kingside
          * @return callback code
          */
         public int castleKingside()
-        { return -1; };
+        {
+            System.out.println("castle kingside");
+            //return MOVE_DEBUG; 
+            return tryToCastle(inRank,7);
+        }
         
         /**
-         * TODO: implement
          * castles queenside
          * @return callback code
          */
         public int castleQueenside()
-        { return -1; }
+        { 
+            System.out.println("castle queenside");
+            return tryToCastle(inRank,0);
+        }
         
         /**
          * Helper function to see if player intends to castle
@@ -3105,18 +3121,29 @@ public class Game
             if ( abs(inFile - file) == 1 &&
                     (inRank + direction == rank) )
                 return PIECE_IS_OBSERVING;
-            
-            if ( inFile == file )
-            {
-                if ( GameBoard[rank][file] != null ) return MOVE_ILLEGAL_PAWN_BLOCKED;
-                if ( inRank + direction == rank ) return PIECE_IS_OBSERVING;
-                if ( inRank + 2*direction != rank ) return MOVE_ILLEGAL;
-                if ( GameBoard[inRank + direction][file] != null ) return MOVE_ILLEGAL_PAWN_BLOCKED;
-                if ( MoveCount == 0 ) return PIECE_IS_OBSERVING;
-                return Game.MOVE_ILLEGAL_PAWN_HAS_MOVED;
-            }
-            
             return MOVE_ILLEGAL;
+        }
+        
+        protected boolean canCapture(String to)
+        {
+            int toInRank = convertInRankFromAlgebraic(to);
+            int toInFile = convertInFileFromAlgebraic(to);
+            return isObservingIn(toInRank,toInFile) == Game.PIECE_IS_OBSERVING
+                    && GameBoard[toInRank][toInFile] != null &&
+                    GameBoard[toInRank][toInFile].Color != GameWhoseTurn;
+        }
+        
+        protected boolean canMoveForward(String to)
+        {
+            int toInRank = convertInRankFromAlgebraic(to);
+            int toInFile = convertInFileFromAlgebraic(to);
+            int direction = GameWhoseTurn == WHITE ? 1 : -1;
+            if ( inFile != toInFile ) return false; // cant move forward to dif file
+            if ( GameBoard[toInRank][toInFile] != null ) return false; // square is blocked
+            if ( inRank + direction == toInRank ) return true; // not blocked, moving 1 square
+            if ( inRank + 2*direction != toInRank ) return false; // try to move 2 squares
+            if ( GameBoard[inRank + direction][toInFile] != null ) return false; // square is blocked
+            return MoveCount == 0; // can move 2 if it hasnt moved yet
         }
 
         @Override
@@ -3149,6 +3176,7 @@ public class Game
         final public int moveNumber;
         final public int whoseTurn;
         final public String moveText;   // Readable move notation
+        // TODO: add comment field
         // The piece moved. required
         final public ChessPiece PieceMoved;
         final private int fromInRank, fromInFile;

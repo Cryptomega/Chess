@@ -263,21 +263,21 @@ public class Game
     /* *************************************************
      * * * * ArrayList of all chess pieces * * * 
      * *************************************************/
-    private final ArrayList<ChessPiece> GamePieces;  
+    private final ArrayList<ChessPiece> GamePieces;  // refractor to List<>
     
     /* *************************************************
      * * * * History ArrayList * * * 
      * ************************************************/
-    private final ArrayList<RecordOfMove> GameHistory;
+    private final ArrayList<RecordOfMove> GameHistory;  // refractor to List<>
     
     // hold future moves if for navigating through moves
-    private final ArrayList<RecordOfMove> GameFuture;
+    private final ArrayList<RecordOfMove> GameFuture; // refractor to List<>
     
 
     /* *************************************************
      * * * * Game State Listeners * * * 
      * ************************************************/
-    private ArrayList<GameListener> GameStateListeners; 
+    private ArrayList<GameListener> GameStateListeners;  // refractor to List<>
     
     
     /** ************************************************
@@ -825,8 +825,8 @@ public class Game
             catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
             if ( p == null ) return MOVE_ILLEGAL;
             
-            System.out.print("Found: "+ p.getUnicode() + p.getPosition());
-            System.out.println(" ["+piece+"]["+loc+"]["+to+"]["+promo+"]" ); //DEBUG
+           // System.out.print("Found: "+ p.getUnicode() + p.getPosition());  //DEBUG
+           // System.out.println(" ["+piece+"]["+loc+"]["+to+"]["+promo+"]" ); //DEBUG
             
             // check for promo, them p.makeMove
             //matcherPromo.reset(  matcherPee4.group(3) );
@@ -853,7 +853,7 @@ public class Game
      * @return an integer move Code. You can use boolean Game.isMoveCodeLegal(Code)
      *         and String Game.getMoveCodeText(Code)
      */
-    public int validateMove(String move)
+    public int validateMove(String move) // TODO: update to regex match
     {
         
         if ( move.length() < 5 ) 
@@ -1645,7 +1645,7 @@ public class Game
     public boolean redo()
     {   if ( GameFuture.isEmpty() ) return false; // no moves
         RecordOfMove move = GameFuture.remove( GameFuture.size() - 1 );
-        System.out.println("redo: " + move.getFullMoveText()); // DEBUG
+        //System.out.println("redo: " + move.getFullMoveText()); // DEBUG
         
         if ( move.PieceCaptured != null ) move.PieceCaptured.captured(); // capture peice
 
@@ -1693,7 +1693,7 @@ public class Game
         Game copy = new Game(this);
         String currentBoard = copy.getBoardPositionSignature();
         int repeats = 1;
-        System.out.println("CUR: " + currentBoard); //DEBUG
+        //System.out.println("CUR: " + currentBoard); //DEBUG
         
         while ( copy.takebackMove() )  // TODO: take back 2 moves at a time
         {
@@ -1702,7 +1702,7 @@ public class Game
             if ( move.PieceMoved.getType() == PAWN || move.PieceCaptured != null ) return false;
             
             String compareBoard = copy.getBoardPositionSignature();
-            System.out.println("SIG: " + compareBoard); //DEBUG
+            //System.out.println("SIG: " + compareBoard); //DEBUG
             if ( currentBoard.equals(compareBoard) ) repeats++;
             if ( repeats >= 3 ) return true;
         }
@@ -2419,32 +2419,20 @@ public class Game
     private class King extends ChessPiece
     {
         // Constructor
-        private King(int color)
-        { super(color, KING); }
-        
-        private King(ChessPiece orig)
-        { super(orig); }
+        private King(int color) { super(color, KING); }
+        private King(ChessPiece orig) { super(orig); }
 
         /**
          * castles kingside
          * @return callback code
          */
-        public int castleKingside()
-        {
-            System.out.println("castle kingside");
-            //return MOVE_DEBUG; 
-            return tryToCastle(inRank,7);
-        }
+        public int castleKingside() { return tryToCastle(inRank,7); }
         
         /**
          * castles queenside
          * @return callback code
          */
-        public int castleQueenside()
-        { 
-            System.out.println("castle queenside");
-            return tryToCastle(inRank,0);
-        }
+        public int castleQueenside() { return tryToCastle(inRank,0); }
         
         /**
          * Helper function to see if player intends to castle
@@ -3489,8 +3477,11 @@ public class Game
             private double GameWhiteTimeLeft;  // time left in seconds
             private double GameBlackTimeLeft;  // time left in seconds
             */
-
-            this.move = GameHistory.get( GameHistory.size() - 1 );
+            
+            if ( !GameHistory.isEmpty() )
+                this.move = GameHistory.get( GameHistory.size() - 1 );
+            else
+                this.move = null;
         }
     }
 

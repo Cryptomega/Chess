@@ -8,6 +8,9 @@ package io.github.cryptomega.chess;
 import static java.lang.Math.abs;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 //import org.springframework.util.StopWatch;
 
 
@@ -40,7 +43,7 @@ public class Game
     public static final char ROOK =   'R';
     public static final char PAWN =   'P';
     
-    // makeMove() and isValidMove() return codes
+    // makeMove() and isValidMove() callback codes
     public static final int MOVE_LEGAL                        = 100;
     public static final int MOVE_LEGAL_EN_PASSANT             = 101;
     public static final int MOVE_LEGAL_CASTLE_KINGSIDE        = 102;
@@ -59,10 +62,12 @@ public class Game
     public static final int ILLEGAL_CASTLE_ROOK_HAS_MOVED     = 115;
     public static final int ILLEGAL_CASTLE_IMPEDED            = 116;
     public static final int MOVE_ILLEGAL_WRONG_PLAYER         = 117;
+    public static final int AMBIGUOUS_MOVE                    = 119;
     public static final int AMBIGUOUS_PROMOTION               = 120;
     public static final int GAME_NOT_ACTIVE                   = 121;
     public static final int PIECE_NOT_ACTIVE                  = 122;
     public static final int INVALID_COORDINATE                = 123;
+    public static final int MOVE_DEBUG                        = 195;
     public static final int PIECE_IS_OBSERVING                = 199;
     
     
@@ -101,6 +106,35 @@ public class Game
     public static final int STATUS_DRAW_WHITE_STALEMATE =    816;
     public static final int STATUS_DRAW_BLACK_STALEMATE =    817;
     
+    //public static final String REGEX_CASTLE_QUEENSIDE = "O-O-O";
+    public static final String REGEX_CASTLE_QUEENSIDE = "[oO0][-_][oO0][-_][oO0]";
+    public static final String REGEX_CASTLE_KINGSIDE = "[oO0][-_][oO0]";
+    public static final String REGEX_CASTLE = "[oO0](-[oO0])(\\1)?(.*)";
+    //public static final String REGEX_MOVE_e2e4 = "([a-h][1-8]).*([a-h][1-8])";
+    public static final String REGEX_MOVE_e2e4 = ".*([a-h][1-8]).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
+    public static final String REGEX_MOVE_Pee4 
+            = "[^PRNBQKa-h]*([PRNBQK]?)([a-h1-8]?).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
+    //public static final String REGEX_PROMO = "=?([qbnrQBNR])(.*)"; // TODO: incorporate into REGEX_MOVE_Pee4 / REGEX_MOVE_e2e4
+    //public static final String REGEX_DISAMBIG = "([KQBNRP]?)([a-h1-8]?)"; // TODO: incorporate into REGEX_MOVE_Pee4 
+    
+    private Matcher matcherCastle = null;
+    private Matcher matchere2e4 = null;
+    private Matcher matcherPee4 = null;
+    //private Matcher matcherPromo = null;
+    //private Matcher matcherDisambig = null;
+    
+    /*
+    private Pattern ptrnCastle = null;
+    private Pattern ptrne2e4 = null;
+    private Pattern ptrnPee4 = null;
+    private Pattern ptrnPromo = null;
+    */
+    /*
+         * (1) try to match two coords: ([a-h][1-8]).*([a-h][1-8])
+     * (2) try disamgious coord: ([PRNBQK][a-h1-7]).*([a-h][1-8])
+     * (3) try normal match: ([PRNBQK])([a-h][1-8])
+     * (4) pawn move match: ([a-h][1-8])
+    */
 
 
     /* ****************************************
@@ -277,6 +311,9 @@ public class Game
         GameStateListeners = new ArrayList<>();
         
         clearGame(); 
+        
+        // initialize patterns
+        initPatterns();
     }
     
     /**
@@ -316,7 +353,7 @@ public class Game
      *         control.
      */
     public Game(Game originalGame, boolean stealListeners)
-    {   // do some cool stuff
+    {   
         // Copy game state variables
         this.isGameActive = originalGame.isGameActive;
         this.GameWhoseTurn  = originalGame.GameWhoseTurn;
@@ -333,6 +370,9 @@ public class Game
         this.GameFuture = new ArrayList<>();
         this.GameStateListeners = new ArrayList<>();
         this.clearBoard();
+        
+        // initialize patterns
+        initPatterns();
         
         // create a HashMap
         HashMap<ChessPiece,ChessPiece> hashmap = new HashMap<>();
@@ -726,30 +766,83 @@ public class Game
     
     /**
      * Makes a move on the board using algebraic coordinates.
-     * @param move Ex: "a1-b2", "a1 a2", "E4xE5", "a7-a8=Q"
+     * @param move Ex: "a1-b2", "a1 a2", "e4xe5", "a7-a8=Q"
      * the third character can be any character, and extraneous
      * characters are ignored
-     * @return an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
+     * @return an integer callback code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
      *         and String Game.getMoveCodeText(Code)
+     * regex pattern search:  [ex ([a-h][1-8])  ]
+     * (0) check for castle O-O-O or O-O
+     * (1) try to match two coords: ([a-h][1-8]).*([a-h][1-8])
+     * (2) try disamgious coord: ([PRNBQK][a-h1-7]).*([a-h][1-8])
+     * (3) try normal match: ([PRNBQK])([a-h][1-8])
+     * (4) pawn move match: ([a-h][1-8])
      */
-    public int makeMove(String move)
+    public int makeMove(String move) // TODO: make this work with normal move commands
     {
-        if ( move.length() < 5 ) 
-            return INVALID_COORDINATE;
-        String fromString = move.substring(0, 2);
-        String toString = move.substring(3, 5);
-        int fromInRank = Game.convertInRankFromAlgebraic(fromString);
-        int fromInFile = Game.convertInFileFromAlgebraic(fromString);
-        int toInRank = Game.convertInRankFromAlgebraic(toString);
-        int toInFile = Game.convertInFileFromAlgebraic(toString);
-        
-        if ( move.length() >= 7)
-        {   char promoType = move.toUpperCase().charAt(6);
-            if ( promoType == QUEEN || promoType == ROOK
-                    || promoType == BISHOP || promoType == KNIGHT )
-                return makeMoveIn(fromInRank, fromInFile, toInRank, toInFile, promoType);
+        if ( matcherCastle.reset(move).find() ) { // castling check
+            
+            System.out.println("pattern Castle matched!["
+                    + matcherCastle.group(1)+"]["+matcherCastle.group(2)+"]["
+                    + matcherCastle.group(3) +"]"); //DEBUG   
+            // TODO: implement
+            King king = ((King)getKing());//.castle
+            
+        } else if ( matchere2e4.reset(move).matches() ) { // full coordinate check
+            
+            String from = matchere2e4.group(1); // from location
+            String to = matchere2e4.group(2); // to location
+            System.out.println("pattern e2e4 matched!["+from+"]["+to+"]["
+                    + matchere2e4.group(3) +"]" ); //DEBUG   
+            //matcherPromo.reset(  matchere2e4.group(3) );
+            
+            if ( matchere2e4.group(3).equals("") )
+                return makeMoveIn(
+                    convertInRankFromAlgebraic(from),
+                    convertInFileFromAlgebraic(from),
+                    convertInRankFromAlgebraic(to),
+                    convertInFileFromAlgebraic(to)    );
+            else
+                return makeMoveIn(
+                    convertInRankFromAlgebraic(from),
+                    convertInFileFromAlgebraic(from),
+                    convertInRankFromAlgebraic(to),
+                    convertInFileFromAlgebraic(to), 
+                    matchere2e4.group(3).charAt(0) );
+            
+            
+        } else if ( matcherPee4.reset(move).matches() ) {  // disambiguous check
+            
+            String piece = matcherPee4.group(1); // from piece
+            String loc = matcherPee4.group(2); // from location
+            String to = matcherPee4.group(3); // to location
+            String promo = matcherPee4.group(4);
+            
+            System.out.println("pattern Pee4 matched!["
+                    + piece + "][" + loc + "]["
+                    + to + "]["
+                    + promo +"]" ); //DEBUG
+            
+            ChessPiece p;
+            try { p = this.matchPiece(piece, loc, to); }
+            catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
+            if ( p == null ) return MOVE_ILLEGAL;
+            System.out.println("Found: "+ p.getUnicode() + p.getPosition() );
+            // check for promo, them p.makeMove
+            //matcherPromo.reset(  matcherPee4.group(3) );
+            if ( promo.equals("") )
+                p.makeMoveIn(
+                    convertInRankFromAlgebraic(to),
+                    convertInFileFromAlgebraic(to) );
+            else
+                p.makeMoveIn(
+                    convertInRankFromAlgebraic(to),
+                    convertInFileFromAlgebraic(to),
+                    promo.charAt(0) );
+                
+            
         }
-        return makeMoveIn(fromInRank, fromInFile, toInRank, toInFile);        
+        return MOVE_ILLEGAL;
     }
     
     
@@ -763,6 +856,7 @@ public class Game
      */
     public int validateMove(String move)
     {
+        
         if ( move.length() < 5 ) 
             return INVALID_COORDINATE;
         String fromString = move.substring(0, 2);
@@ -804,7 +898,7 @@ public class Game
      * @param fromChessFile value from 1-8
      * @param toChessRank value from 1-8
      * @param toChessFile value from 1-8
-     * @return an integer move code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
+     * @return an integer callback code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
      *         and String Game.getMoveCodeText(Code)
      */
     public int makeMove(int fromChessRank, int fromChessFile, int toChessRank, int toChessFile)
@@ -848,7 +942,7 @@ public class Game
     protected int makeMoveIn(int fromRank, int fromFile, int toRank, int toFile, char promotionType)
     {
         if ( !isValidInCoord(fromRank, fromFile) || !isValidInCoord(toRank, toFile) )
-            throw new IllegalArgumentException("Invalid arguements for makeMove");
+            throw new IllegalArgumentException("Invalid arguements for makeMove"); // TODO: soft fail
         // call makeMove(rank,file,promotionType) on the chess piece!
         if ( GameBoard[fromRank][fromFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
@@ -1160,6 +1254,9 @@ public class Game
         return newPiece;
     }
     
+    private ChessPiece getKing()
+    { return getKing(GameWhoseTurn); }
+    
     private ChessPiece getKing(int color)
     {
         int index = getKingIndex(color);
@@ -1341,6 +1438,8 @@ public class Game
                 return" Rook has moved, can no longer castle.";
             case ILLEGAL_CASTLE_IMPEDED:
                 return "Castle impeded";
+            case Game.AMBIGUOUS_MOVE:
+                return "Ambiguous move.";
             case INVALID_COORDINATE:
                 return "Invalid coordinate";
             default:
@@ -1625,12 +1724,10 @@ public class Game
     public String getBoardPositionSignature()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append( ( GameWhoseTurn == WHITE ) ? 'W' : 'B'); // player to move
-                            // TODO: consider removing 
-        // check for caslting
-        sb.append( getCastleFEN( GameWhoseTurn ) );
-        // check for en passant
-        sb.append( getEPSignature() );
+        //sb.append( ( GameWhoseTurn == WHITE ) ? 'W' : 'B'); // player to move
+        
+        sb.append( getCastleSignature( GameWhoseTurn ) ); // check for caslting
+        sb.append( getEPSignature() ); // check for en passant
         
         // go through board
         int i = 0;
@@ -1657,33 +1754,21 @@ public class Game
 
     private String getCastleSignature(int player)
     {
-        // TODO: implement
-        return "";
+        String fen = getCastleFEN(player);
+        switch (fen)
+        {
+            case "KQ": return "B";
+            case "kq": return "b";
+            case "-":
+                if ( player == WHITE ) return "=";
+                return "-";
+            default: return fen;
+        }
     }
     
 
     private char getEPSignature()
-    {
-        // getEpFEN
-        int fifthRank = (GameWhoseTurn == WHITE) ? 4 : 3;
-        int epRank = (GameWhoseTurn == WHITE) ? 5 : 2;
-        for (int f = 0; f < 8; f++)
-        {
-            ChessPiece pawn = GameBoard[fifthRank][f];
-            if ( pawn != null && pawn.getType() == PAWN && pawn.getColor()== GameWhoseTurn )
-            {
-                if ( pawn.validateMoveIn(epRank, f-1) == MOVE_LEGAL_EN_PASSANT )
-                {   
-                    return Game.convertAlgebraicFromIn(fifthRank,f-1).charAt(0);
-                    
-                } else if ( pawn.validateMoveIn(epRank, f+1) == MOVE_LEGAL_EN_PASSANT )
-                {   
-                    return Game.convertAlgebraicFromIn(fifthRank,f+1).charAt(0);
-                }
-            }
-        }
-        return 'n';
-    }
+    { return getEpFEN().charAt(0); }
 
     public String getFEN()
     {
@@ -1787,6 +1872,71 @@ public class Game
     private RecordOfMove getLastMove()  // TODO: subsitute functions where possible
     {   if ( GameHistory.isEmpty()  ) return null;
         return GameHistory.get( GameHistory.size() - 1 );
+    }
+
+    private void initPatterns()
+    {
+        try
+        {
+            // TODO: add piece disambiguoate matcher
+            
+            matchere2e4 = Pattern.compile(REGEX_MOVE_e2e4).matcher("");
+            matcherCastle = Pattern.compile(REGEX_CASTLE).matcher("");
+            matcherPee4 = Pattern.compile(REGEX_MOVE_Pee4).matcher("");    
+            //matcherPromo = Pattern.compile(REGEX_PROMO).matcher("");  
+            //matcherDisambig = Pattern.compile(REGEX_DISAMBIG).matcher("");
+        } catch(PatternSyntaxException pse) { // DEBUG
+                System.out.println("There is a problem" +
+                               " with the regular expression!");
+                System.out.println("The pattern in question is: "+
+                               pse.getPattern());
+                System.out.println("The description is: "+
+                               pse.getDescription());
+                System.out.println("The message is: "+
+                               pse.getMessage());
+                System.out.println("The index is: "+
+                               pse.getIndex());
+        }
+              
+    }
+
+    private ChessPiece matchPiece(String typeStr, String location, String to)
+    {
+         char type = 'P';
+        if ( !typeStr.equals("") ) type = typeStr.charAt(0);
+        int disambig = -1;
+        boolean disambigRank = false;
+        boolean disambigFile = false;
+        if ( location.matches("[a-h]") )
+        {
+            disambigFile = true;
+            disambig = convertInFileFromAlgebraic( location );
+        } else if ( location.matches("[1-8]") ) {
+        
+            disambigRank = true;
+            disambig = convertInRankFromAlgebraic( "x" + location );
+        }
+        
+        // search ChessPieces
+        ChessPiece match = null;
+        for ( ChessPiece piece : this.GamePieces )
+        {
+            if ( piece.Color != GameWhoseTurn ) continue; // piece must be for current player
+            if ( piece.Type != type ) continue; // must have correct type
+            if ( !piece.isActive ) continue; // piece must be active
+            // try to disambiguate
+            if ( disambigFile && piece.inFile != disambig ) continue;
+            if ( disambigRank && piece.inRank != disambig ) continue;
+            // can the piece see the target
+            if ( PIECE_IS_OBSERVING != piece.isObservingIn(
+                    convertInRankFromAlgebraic(to), convertInFileFromAlgebraic(to)) )
+                continue;  // skip if piece is not observing to square
+            // at this point, we have a hit
+            if ( match != null ) 
+                throw new IllegalArgumentException("Can not disambiguate move.");   // already had a hit, cannot disambiguate
+            match = piece;
+        }
+        return match;
     }
     
     
@@ -1961,7 +2111,6 @@ public class Game
             int fromInRank = this.inRank;
             int fromInFile = this.inFile;
             
-            //************ performValidatedMove ***********************
             // capture piece, if any
             ChessPiece captured = GameBoard[inRank][inFile];
             if ( captured != null )
@@ -1969,7 +2118,6 @@ public class Game
 
             // set the new position and update mChessBoard
             updateChessPieceIn(inRank, inFile);
-            //******** end performValidatedMove ***********************
             
             // check for checks, checkmate, stalemate or draw
             int opponentColor = ( Color == WHITE ) ? BLACK : WHITE;
@@ -2267,12 +2415,28 @@ public class Game
         { super(orig); }
 
         /**
+         * TODO: implement
+         * castles kingside
+         * @return callback code
+         */
+        public int castleKingside()
+        { return -1; };
+        
+        /**
+         * TODO: implement
+         * castles queenside
+         * @return callback code
+         */
+        public int castleQueenside()
+        { return -1; }
+        
+        /**
          * Helper function to see if player intends to castle
          * @param rank inputed rank
          * @param file inputed file
          * @return true if player is trying to castle
          */
-        private boolean isTryingToCastle(int rank, int file)
+        protected boolean isTryingToCastle(int rank, int file)
         {
             if ( Color == WHITE && inRank != 0)
                 return false;
@@ -2315,7 +2479,7 @@ public class Game
          * @return MOVE_LEGAL_CASTLE if successful, otherwise returns
          *         an error code
          */
-        private int tryToCastle(int rank, int file)
+        protected int tryToCastle(int rank, int file)
         {
             // DEBUG printout
             //System.out.println("Executing Castle to " +
@@ -2374,7 +2538,7 @@ public class Game
             return code;
         }
         
-        private ChessPiece getCastlingRook(int toRank, int toFile)
+        protected ChessPiece getCastlingRook(int toRank, int toFile)
         {
             // returns the rook to castle with
             int kingFile = inFile;
@@ -2398,7 +2562,7 @@ public class Game
          * @return MOVE_LEGAL_CASTLE_KINGSIDE or MOVE_LEGAL_CASTLE_QUEENSIDE
          *         if castling is allowed, otherwise returns an error code
          */
-        private int validateCastle(int rank, int file)
+        protected int validateCastle(int rank, int file)
         {
             // has king already moved?
             if ( MoveCount != 0 ) return ILLEGAL_CASTLE_KING_HAS_MOVED;
@@ -2750,6 +2914,7 @@ public class Game
             if ( (Color == WHITE && inRank == 7 ) 
                     || (Color == BLACK && inRank == 0 ) )
             {
+                promotionType = Character.toUpperCase(promotionType);
                 // get ready to promote!
                 if ( !isValidPromotionType(promotionType) )
                     return AMBIGUOUS_PROMOTION; // not so fast
@@ -2836,7 +3001,7 @@ public class Game
             ChessPiece captured = null;
             boolean enPassant = false;
             if ( (inFile == file) && (inRank + direction == rank ) )  
-            {   
+            {
                 // moving forward one square
                 if ( GameBoard[rank][file] != null )
                     return MOVE_ILLEGAL_PAWN_BLOCKED;
@@ -2937,9 +3102,20 @@ public class Game
         protected int isObservingIn(int rank, int file)
         {
             int direction = (Color == WHITE) ? 1 : -1;
-            if ( (inRank + direction == rank) &&
-                    abs(inFile - file) == 1 )
+            if ( abs(inFile - file) == 1 &&
+                    (inRank + direction == rank) )
                 return PIECE_IS_OBSERVING;
+            
+            if ( inFile == file )
+            {
+                if ( GameBoard[rank][file] != null ) return MOVE_ILLEGAL_PAWN_BLOCKED;
+                if ( inRank + direction == rank ) return PIECE_IS_OBSERVING;
+                if ( inRank + 2*direction != rank ) return MOVE_ILLEGAL;
+                if ( GameBoard[inRank + direction][file] != null ) return MOVE_ILLEGAL_PAWN_BLOCKED;
+                if ( MoveCount == 0 ) return PIECE_IS_OBSERVING;
+                return Game.MOVE_ILLEGAL_PAWN_HAS_MOVED;
+            }
+            
             return MOVE_ILLEGAL;
         }
 

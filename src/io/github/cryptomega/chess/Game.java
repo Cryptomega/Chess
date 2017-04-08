@@ -8,11 +8,11 @@ package io.github.cryptomega.chess;
 import static java.lang.Math.abs;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 //import org.springframework.util.StopWatch;
-
 
 
 
@@ -112,7 +112,7 @@ public class Game
             = "[^PRNBQKa-h]*([PRNBQK]?)([a-h1-8]?).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
 
     private Matcher matcherCastle = null;
-    private Matcher matcherFull = null;
+    private Matcher matcherFull   = null;
     private Matcher matcherDisamb = null;
 
     /* ****************************************
@@ -140,11 +140,16 @@ public class Game
     //private boolean mIsChess960 = false;
     
     // match details
-    protected String whitePlayer = "White";
-    protected String blackPlayer = "Black";
+    protected String whitePlayer = "";
+    protected String blackPlayer = "";
     protected String GameResult = "*";
     protected String startingFEN = "";
     // TODO: implement more detail, update result on game finish
+    // int finalMoveCount
+    // int finalGameState;
+    // int startingMoveCount
+    // int startingNumberHalfMoves
+    
     
     
     /**
@@ -229,7 +234,7 @@ public class Game
                 isGameActive = false;
                 GameState = GameWhiteOffersDraw ? 
                         STATUS_DRAW_WHITE_CLAIMS_THREE : STATUS_DRAW_BLACK_CLAIMS_THREE;
-            }        
+            } 
             
 
         if( isTimedGame && GameTimer != null ) // switch over clock
@@ -527,8 +532,8 @@ public class Game
      * Gets all the ChessPiece references in an ArrayList
      * @return ArrayList containing references to the pieces
      */
-    public ArrayList<ChessPiece> getPieces()
-        { return (ArrayList<ChessPiece>) GamePieces.clone(); }
+    public List<ChessPiece> getPieces()
+        { return  (List<ChessPiece>) GamePieces.clone(); }
     
     
     
@@ -568,11 +573,12 @@ public class Game
      * Initializes the game board (mChessBoard) to all null values 
      * Clears the pieces array (mChessPieces)
      * Clears the history stack
+     * @return current game instance
      */
-    public final void clearGame() // TODO: return current Game is success
+    public final Game clearGame() 
     {
-        if ( isGameActive == true ) // TODO: soft fail by returning null
-            throw new IllegalStateException("Cannot clear game while game is active");
+        if ( isGameActive == true ) 
+            return null;
         
         resetGameVariables(); // reset game state variables
         initTimer();          // initialize timer
@@ -585,24 +591,28 @@ public class Game
             GamePieces.clear();
         WhiteKingIndex = -1;
         BlackKingIndex = -1;
+        return this;
     }
     
     /**
      * Does a hard reset, ignoring GameState.
      * GUI might want to confirm action before 
      * calling this.
+     * @return current game instance
      */
-    public void restartGame() 
+    public Game restartGame() 
     {
         endGame();
         resetGame();
         startGame();
+        return this;
     }
     
     /**
      * Resets the game, so it can be restarted with startGame()
+     * @return current game instance
      */
-    public void resetGame()
+    public Game resetGame()
     {
         if ( isGameActive == true )
             throw new IllegalStateException("Cannot clear game while game is active");
@@ -612,18 +622,20 @@ public class Game
         clearBoard();         // clear game board
         clearHistory();       // clear history
         resetPieces();  // reset the pieces
+        return this;
     }
     
 
     /**
      * Sets up the pieces on the board for a 
      * standard game. Call startGame() to begin!
+     * @return current Game instance
      */
-    public void setupStandardGame()
+    public Game setupStandardGame()
     {
         // require mIsGameActive to be false 
         if ( isGameActive == true )
-            return; // soft fail
+            return null; // soft fail
             //throw new IllegalStateException("Cannot setup game while game is active");
 
         addPieceToGame(WHITE, KING, 0, 4 );
@@ -648,37 +660,43 @@ public class Game
         addPieceToGame(BLACK, ROOK, 7, 7 );
         for ( int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(BLACK, PAWN, 6, i);
+        return this;
     }
     
     
     /**
      * Starts game to begin accepting moves
+     * @return current Game instance
      */
-    public void startGame()
+    public Game startGame()
     {
         isGameActive = true;
+        return this;
     }
     
     /**
      * Manually end the game
+     * @return current Game instance
      */
-    public void endGame()
+    public Game endGame()
     {
         isGameActive = false;
         
         if ( GameTimer != null )
             GameTimer.stopTimer();
+        return this;
     }
     
     /**
      * Sets the starting time. passing 0,0 disables the timer
      * @param startingMins
      * @param incrementSecs 
+     * @return  returns current Game instance, or null if fail
      */
-    public void setStartTime(int startingMins, int incrementSecs)
+    public Game setStartTime(int startingMins, int incrementSecs)
     {
         if ( isGameActive )
-            return; // cannot change if game is in progress
+            return null; // cannot change if game is in progress
         
         StartingMinutes = startingMins;
         OnMoveIncrementSeconds = incrementSecs;
@@ -688,6 +706,7 @@ public class Game
         
         // initialize timer
         initTimer();
+        return this;
     }
     
 
@@ -765,19 +784,13 @@ public class Game
     
     /**
      * Makes a move on the board using algebraic coordinates.
-     * @param move Ex: "a1-b2", "a1 a2", "e4xe5", "a7-a8=Q"
+     * @param move Ex: "e4", "exd5", "Nc6", "a1-b2", "Ngxe2", "a1 a2", "e4xe5", "a7-a8=Q" etc
      * the third character can be any character, and extraneous
      * characters are ignored
      * @return an integer callback code MoveCode. You can use boolean Game.isMoveCodeLegal(Code)
      *         and String Game.getMoveCodeText(Code)
-     * regex pattern search:  [ex ([a-h][1-8])  ]
-     * (0) check for castle O-O-O or O-O
-     * (1) try to match two coords: ([a-h][1-8]).*([a-h][1-8])
-     * (2) try disamgious coord: ([PRNBQK][a-h1-7]).*([a-h][1-8])
-     * (3) try normal match: ([PRNBQK])([a-h][1-8])
-     * (4) pawn move match: ([a-h][1-8])
      */
-    public int makeMove(String move) // TODO: make this work with normal move commands
+    public int makeMove(String move) 
     {
         if ( matcherCastle.reset(move).find() ) { // castling check
             
@@ -1165,7 +1178,7 @@ public class Game
             // if not double check, check for blocks or captures
             int cInRank = checkingPiece.inRank;
             int cInFile = checkingPiece.inFile;
-            ArrayList<Square> interveningSquares 
+            List<Square> interveningSquares 
                     = Square.getInterveningSquares(
                             kingRank, kingFile, cInRank, cInFile );
             
@@ -1844,7 +1857,7 @@ public class Game
     private String getEpFEN()
     {
         int dir = (GameWhoseTurn == WHITE) ? 1 : -1;
-        RecordOfMove lastMove = getLastMove();
+        RecordOfMove lastMove = getLastMoveRecord();
         if ( lastMove == null ) return "-";
         if ( lastMove.PieceMoved.Type == PAWN && lastMove.fromInRank == lastMove.toInRank + 2*dir )
             return Game.convertAlgebraicFromIn(lastMove.toInRank+dir, lastMove.toInFile);
@@ -1868,7 +1881,7 @@ public class Game
         return numMoves; // TODO: add initial halfMoves if loaded from FEN
     }
     
-    private RecordOfMove getLastMove()  // TODO: subsitute functions where possible
+    private RecordOfMove getLastMoveRecord()  // TODO: subsitute functions where possible
     {   if ( GameHistory.isEmpty()  ) return null;
         return GameHistory.get( GameHistory.size() - 1 );
     }
@@ -1948,6 +1961,26 @@ public class Game
             match = piece;
         }
         return match;
+    }
+
+    public String getMatchTitle()
+    {
+        StringBuilder sb = new StringBuilder();
+        if ( whitePlayer.equals("") ) sb.append("White");
+        else sb.append(whitePlayer);
+        sb.append(" vs ");
+        if ( blackPlayer.equals("") ) sb.append("Black");
+        else sb.append(blackPlayer);
+        sb.append(" ").append(this.GameResult);
+        return sb.toString();
+    }
+
+    public String getLastMove()
+    {
+        if ( GameHistory.isEmpty() )
+            return "";
+        else
+            return GameHistory.get( GameHistory.size() -1 ).getFullMoveText();
     }
     
     
@@ -2342,12 +2375,12 @@ public class Game
          * Gets all valid moves for this piece
          * @return ArrayList of Square objects containing valid moves
          */
-        public ArrayList<Square> getValidMoves()
+        public List<Square> getValidMoves()
         {
             ArrayList<Square> validMoves = new ArrayList<>();
             if ( Color != GameWhoseTurn ) 
                 return validMoves;  //return empty if wrong turn
-            ArrayList<Square> candidateMoves = getCandidateMoves();
+            List<Square> candidateMoves = getCandidateMoves();
             
             for (Square square : candidateMoves)
             {
@@ -2361,7 +2394,7 @@ public class Game
          * Gets a list of squares the piece might be able to move to
          * @return ArrayList of Square objects containing candidate squares
          */
-        abstract public ArrayList<Square> getCandidateMoves();
+        abstract public List<Square> getCandidateMoves();
         
         // public get methods
         /**
@@ -2637,7 +2670,7 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         {
             ArrayList<Square> returnList = new ArrayList<>();
             for (int i = inRank-1; i <= inRank+1; i++)
@@ -2723,9 +2756,9 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         {
-            ArrayList<Square> returnList = Square.getDiagonals(inRank,inFile);
+            List<Square> returnList = Square.getDiagonals(inRank,inFile);
             returnList.addAll( Square.getFile(inFile) );
             returnList.addAll( Square.getRank(inRank) );
             return returnList;            
@@ -2776,9 +2809,9 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         {
-            ArrayList<Square> returnList = Square.getFile(inFile);
+            List<Square> returnList = Square.getFile(inFile);
             returnList.addAll( Square.getRank(inRank) );
             return returnList;  
         }
@@ -2818,7 +2851,7 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         { return Square.getDiagonals(inRank, inFile); }
     }
     
@@ -2848,7 +2881,7 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         {
             ArrayList<Square> returnList = new ArrayList<>();
             for (int rankStep = 1; rankStep <= 2; rankStep++)
@@ -3135,7 +3168,7 @@ public class Game
         }
 
         @Override
-        public ArrayList<Square> getCandidateMoves()
+        public List<Square> getCandidateMoves()
         {
             ArrayList<Square> returnList = new ArrayList<>();
             int direction = (Color == WHITE) ? 1 : -1;
@@ -3351,14 +3384,13 @@ public class Game
             this.inFile = inFile;
         }
         
-        public int getRank()
-        { return Game.convertChessRankFromInRank(inRank); }
-        public int getFile()
-        { return Game.convertChessFileFromInFile(inFile); }
+        // getters
+        public int getRank() { return Game.convertChessRankFromInRank(inRank); }
+        public int getFile() { return Game.convertChessFileFromInFile(inFile); }
+        @Override public String toString() { return Game.convertAlgebraicFromIn(inRank, inFile); }
         
-        @Override
-        public String toString()
-        { return Game.convertAlgebraicFromIn(inRank, inFile); }
+        // get piece
+        //public ChessPiece getPiece() { return Game.this.GameBoard[inRank][inFile]; }
         
         public boolean isEqual(Square square)
         { return this.inRank == square.inRank && this.inFile == square.inFile; }
@@ -3367,10 +3399,10 @@ public class Game
         { return square1.inRank == square2.inRank && square1.inFile == square2.inFile; }
         
         // Static helper methods
-        public static ArrayList<Square> getDiagonals(Square square)
-        { return getDiagonals(square.inRank, square.inFile); }
+        //public static List<Square> getDiagonals(Square square)
+        //{ return getDiagonals(square.inRank, square.inFile); }
         
-        private static ArrayList<Square> getDiagonals(int inRank, int inFile)
+        private static List<Square> getDiagonals(int inRank, int inFile)
         {
             ArrayList<Square> returnList = new ArrayList<>();
             
@@ -3387,7 +3419,7 @@ public class Game
             return returnList;
         }
         
-        private static ArrayList<Square> getFile(int inFile)
+        private static List<Square> getFile(int inFile)
         {
             ArrayList<Square> returnList = new ArrayList<>();
             if ( inFile < 0 || inFile > 7 )
@@ -3397,7 +3429,7 @@ public class Game
             return returnList;
         }
         
-        private static ArrayList<Square> getRank(int inRank)
+        private static List<Square> getRank(int inRank)
         {
             ArrayList<Square> returnList = new ArrayList<>();
             if ( inRank < 0 || inRank > 7 )
@@ -3407,7 +3439,7 @@ public class Game
             return returnList;
         }
         
-        public static ArrayList<Square> getInterveningSquares(
+        public static List<Square> getInterveningSquares(
                 int inRank1, int inFile1, int inRank2, int inFile2 )
         {
             ArrayList<Square> returnList = new ArrayList<>();
@@ -3436,6 +3468,8 @@ public class Game
             return returnList;            
         }
     }
+    
+    // Static square helper methods
     
     
     

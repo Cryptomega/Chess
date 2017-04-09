@@ -6,11 +6,9 @@
 package io.github.cryptomega.chess;
 
 import static io.github.cryptomega.chess.Game.*;
-//import static io.github.cryptomega.chess.Game.getMoveCodeText;
-//import static io.github.cryptomega.chess.Game.isMoveCodeLegal;
 import com.supareno.pgnparser.PGNParser;
 import com.supareno.pgnparser.Parser;
-import com.supareno.pgnparser.jaxb.Games;
+//import com.supareno.pgnparser.jaxb.Games;
 import com.supareno.pgnparser.jaxb.Hit;
 
 
@@ -58,7 +56,11 @@ public class PGNLoader
         com.supareno.pgnparser.jaxb.Game aGame = iter.next();
         
         // get the match details // TODO: 
-        
+        myGame.whitePlayer = aGame.getWhite();
+        myGame.blackPlayer = aGame.getBlack();
+        myGame.GameResult = aGame.getResult();
+        myGame.startingFEN = aGame.getFEN();
+
         // TODO: check FEN
         
         myGame.setupStandardGame();
@@ -76,14 +78,14 @@ public class PGNLoader
                 //System.out.print("."+ ++i + "[" + move +"]"); // DEBUG
                 int code = myGame.makeMove(move);
                 if ( !isMoveCodeLegal( code ) )
-                    System.out.println("DEBUG:ERROR LOADING MOVE: "+getMoveCodeText(code)); // DEBUG
+                {
+                    System.out.print("DEBUG:ERROR LOADING MOVE: "); // DEBUG
+                    System.out.println( getMoveCodeText(code) );
+                }
             }
         }
         // TODO: get game title
-        
-        // TODO: implement
-        
-        //LOGGER.debug( "end" );
+
         
         return myGame;
     }

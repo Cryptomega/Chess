@@ -111,6 +111,7 @@ public class Game
     public static final String REGEX_MOVE_DISAMB 
             = "[^PRNBQKa-h]*([PRNBQK]?)([a-h1-8]?).*([a-h][1-8])=?([qbnrQBNR]?)(.*)";
 
+    
     private Matcher matcherCastle = null;
     private Matcher matcherFull   = null;
     private Matcher matcherDisamb = null;
@@ -584,13 +585,8 @@ public class Game
         initTimer();          // initialize timer
         clearBoard();         // clear game board
         clearHistory();       // clear history
-        
-        // TODO: release listeners
-        // clear pieces array
-        if ( GamePieces != null && !GamePieces.isEmpty() )
-            GamePieces.clear();
-        WhiteKingIndex = -1;
-        BlackKingIndex = -1;
+        releaseListeners(); // release listeners
+        clearPieces(); // clear pieces array
         return this;
     }
     
@@ -701,7 +697,8 @@ public class Game
         StartingMinutes = startingMins;
         OnMoveIncrementSeconds = incrementSecs;
         GameWhiteTimeLeft = (double)StartingMinutes*60.0;
-        GameBlackTimeLeft = (double)StartingMinutes*60.0;
+        GameBlackTimeLeft = GameWhiteTimeLeft;
+        //GameBlackTimeLeft = (double)StartingMinutes*60.0;
         isTimedGame = !(startingMins == 0 && incrementSecs == 0);
         
         // initialize timer
@@ -712,17 +709,18 @@ public class Game
 
     /**
      * Change the default timer
-     * @param timer a timer object which implements Chess.TimerController
+     * @param timer a timer object which implements TimerController
+     * @return current game instance, or null if cannot set timer
      */
-    public void setGameTimer(TimerController timer)
+    public Game setGameTimer(TimerController timer)
     {   
-        if ( isGameActive )
-            return; // cannot change timer while game is active
+        if ( isGameActive ) return null; // cannot change timer while game is active
         
-        if ( this.GameTimer != null )   // in case a timer is already running
-            this.GameTimer.stopTimer(); // for some reason
+        // in case a timer is already running for some reason
+        if ( this.GameTimer != null ) this.GameTimer.stopTimer(); 
         
         this.GameTimer = timer; 
+        return this;
     }
     
     /**
@@ -781,6 +779,8 @@ public class Game
     
     public int makeMoveCastleKingside() { return ((King)getKing()).castleKingside(); }
     public int makeMoveCastleQueenside() { return ((King)getKing()).castleQueenside(); }
+    public int validateCastleKingside() { return ((King)getKing()).validateCastleKingside(); }
+    public int validateCastleQueenside() { return ((King)getKing()).validateCastleQueenside(); }
     
     /**
      * Makes a move on the board using algebraic coordinates.
@@ -793,24 +793,18 @@ public class Game
     public int makeMove(String move) 
     {
         if ( matcherCastle.reset(move).find() ) { // castling check
-            
-            //System.out.println("pattern Castle matched!["
-            //        + matcherCastle.group(1)+"]["+matcherCastle.group(2)+"]["
-            //        + matcherCastle.group(3) +"]"); //DEBUG   
+             
             if ( matcherCastle.group(2) == null )
                 return makeMoveCastleKingside();
             else
                 return makeMoveCastleQueenside();
-
             
         } else if ( matcherFull.reset(move).matches() ) { // full coordinate check
             
             String from = matcherFull.group(1); // from location
             String to = matcherFull.group(2); // to location
-            //System.out.println("pattern e2e4 matched!["+from+"]["+to+"]["
-            //        + matchere2e4.group(3) +"]" ); //DEBUG   
-            //matcherPromo.reset(  matchere2e4.group(3) );
-            if ( matcherFull.group(3).equals("") )
+            String promo = matcherFull.group(3); // promo type
+            if ( promo.equals("") )
                 return makeMoveIn(
                     convertInRankFromAlgebraic(from),
                     convertInFileFromAlgebraic(from),
@@ -822,7 +816,7 @@ public class Game
                     convertInFileFromAlgebraic(from),
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to), 
-                    matcherFull.group(3).charAt(0) );
+                    promo.charAt(0) );
             
             
         } else if ( matcherDisamb.reset(move).matches() ) {  // disambiguous check
@@ -831,19 +825,11 @@ public class Game
             String loc = matcherDisamb.group(2); // from location
             String to = matcherDisamb.group(3); // to location
             String promo = matcherDisamb.group(4);
-            
-            
             ChessPiece p;
             try { p = this.matchPiece(piece, loc, to); }
             catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
             if ( p == null ) return MOVE_ILLEGAL;
-            
-           // System.out.print("Found: "+ p.getUnicode() + p.getPosition());  //DEBUG
-           // System.out.println(" ["+piece+"]["+loc+"]["+to+"]["+promo+"]" ); //DEBUG
-            
-            // check for promo, them p.makeMove
-            //matcherPromo.reset(  matcherPee4.group(3) );
-            if ( promo.equals("") )
+            if ( promo.equals("") ) // check for promotion
                 return p.makeMoveIn(
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to) );
@@ -868,7 +854,40 @@ public class Game
      */
     public int validateMove(String move) // TODO: update to regex match
     {
+        if ( matcherCastle.reset(move).find() ) { // castling check
+             
+            if ( matcherCastle.group(2) == null ) return validateCastleKingside();
+            else return validateCastleQueenside();
+            
+        } else if ( matcherFull.reset(move).matches() ) { // full coordinate check
+            
+            String from = matcherFull.group(1); // from location
+            String to = matcherFull.group(2); // to location
+            //String promo = matcherFull.group(3); // promo type
+            return validateMove(
+                    convertChessRankFromAlgebraic(from),
+                    convertChessFileFromAlgebraic(from),
+                    convertChessRankFromAlgebraic(to),
+                    convertChessFileFromAlgebraic(to)    );
+            
+        } else if ( matcherDisamb.reset(move).matches() ) {  // disambiguous check
+            
+            String piece = matcherDisamb.group(1); // from piece
+            String loc = matcherDisamb.group(2); // from location
+            String to = matcherDisamb.group(3); // to location
+            ChessPiece p;
+            try { p = this.matchPiece(piece, loc, to); }
+            catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
+            if ( p == null ) return MOVE_ILLEGAL;
+            return p.validateMoveIn(
+                    convertInRankFromAlgebraic(to),
+                    convertInFileFromAlgebraic(to) );
+
+        }
         
+        return MOVE_ILLEGAL; // unrecognized move
+        
+        /*
         if ( move.length() < 5 ) 
             return INVALID_COORDINATE;
         String fromString = move.substring(0, 2);
@@ -877,7 +896,9 @@ public class Game
         int fromFile = Game.convertChessFileFromAlgebraic(fromString);
         int toRank = Game.convertChessRankFromAlgebraic(toString);
         int toFile = Game.convertChessFileFromAlgebraic(toString);
-        return this.validateMove(fromRank, fromFile, toRank, toFile);        
+        */
+        //return this.validateMove(fromRank, fromFile, toRank, toFile);        
+        
     }
     
     
@@ -1084,23 +1105,30 @@ public class Game
     }
     private void initTimer()    // initialize timer
     {   
-        if ( isTimedGame )
-            setGameTimer(new GameTimer(this) );
-        if ( GameTimer != null )
-            GameTimer.initTimer(StartingMinutes, OnMoveIncrementSeconds, GameWhoseTurn);
+        if ( !isTimedGame ) return;
+        
+        // load default timer if non already supplied
+        if ( GameTimer == null ) setGameTimer(new GameTimer(this) );
+        
+        GameTimer.initTimer(StartingMinutes, OnMoveIncrementSeconds, GameWhoseTurn); 
     }
-    private void clearHistory()
+    private void clearHistory() // clear history
     {
-        // clear history
         if ( GameHistory != null && !GameHistory.isEmpty() )
             GameHistory.clear();
     }
-    private void clearBoard()
+    private void clearBoard() // clear game board
     {
-        // clear game board
         for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
             for (int j = 0; j < BOARD_NUMBER_FILES; j++)
                 GameBoard[i][j] = null;
+    }
+    private void clearPieces()
+    {
+        if ( GamePieces != null && !GamePieces.isEmpty() )
+            GamePieces.clear();
+        WhiteKingIndex = -1;
+        BlackKingIndex = -1;
     }
     private void resetGameVariables()
     {
@@ -1179,7 +1207,7 @@ public class Game
             int cInRank = checkingPiece.inRank;
             int cInFile = checkingPiece.inFile;
             List<Square> interveningSquares 
-                    = Square.getInterveningSquares(
+                    = getInterveningSquares(
                             kingRank, kingFile, cInRank, cInFile );
             
             // get intervening squares
@@ -1971,7 +1999,7 @@ public class Game
         sb.append(" vs ");
         if ( blackPlayer.equals("") ) sb.append("Black");
         else sb.append(blackPlayer);
-        sb.append(" ").append(this.GameResult);
+        if ( !GameResult.equals("*")) sb.append(" (").append(GameResult).append(")");
         return sb.toString();
     }
 
@@ -1982,8 +2010,9 @@ public class Game
         else
             return GameHistory.get( GameHistory.size() -1 ).getFullMoveText();
     }
-    
-    
+
+    public boolean isTimed() { return isTimedGame; }
+
     
     /**************************************************************************
      * ************************************************************************
@@ -2467,6 +2496,7 @@ public class Game
          */
         public int castleQueenside() { return tryToCastle(inRank,0); }
         
+        
         /**
          * Helper function to see if player intends to castle
          * @param rank inputed rank
@@ -2491,7 +2521,10 @@ public class Game
             return ( GameBoard[rank][file] != null && 
                      GameBoard[rank][file].getType() == ROOK );
         }
-                
+
+        public int validateCastleKingside() { return validateCastle(inRank, 7); }
+        public int validateCastleQueenside() { return validateCastle(inRank, 0); }
+        
         @Override
         protected int validateMoveIn(int inRank, int inFile)
         {
@@ -2758,9 +2791,9 @@ public class Game
         @Override
         public List<Square> getCandidateMoves()
         {
-            List<Square> returnList = Square.getDiagonals(inRank,inFile);
-            returnList.addAll( Square.getFile(inFile) );
-            returnList.addAll( Square.getRank(inRank) );
+            List<Square> returnList = Game.this.getDiagonals(inRank,inFile);
+            returnList.addAll(Game.this.getFile(inFile) );
+            returnList.addAll(Game.this.getRank(inRank) );
             return returnList;            
         }
     }
@@ -2811,8 +2844,8 @@ public class Game
         @Override
         public List<Square> getCandidateMoves()
         {
-            List<Square> returnList = Square.getFile(inFile);
-            returnList.addAll( Square.getRank(inRank) );
+            List<Square> returnList = Game.this.getFile(inFile);
+            returnList.addAll(Game.this.getRank(inRank) );
             return returnList;  
         }
     }
@@ -2852,7 +2885,7 @@ public class Game
 
         @Override
         public List<Square> getCandidateMoves()
-        { return Square.getDiagonals(inRank, inFile); }
+        { return Game.this.getDiagonals(inRank, inFile); }
     }
     
     /**
@@ -3196,7 +3229,7 @@ public class Game
         // TODO: have method to convert piece reference to string with starting square
         final public int moveNumber;
         final public int whoseTurn;
-        final public String moveText;   // Readable move notation
+        final public String moveText;   // TODO: use PGN formatting. Readable move notation 
         // TODO: add comment field
         // The piece moved. required
         final public ChessPiece PieceMoved;
@@ -3277,10 +3310,8 @@ public class Game
             
             // construct move string
             StringBuilder sb = new StringBuilder();
-            if ( PieceMoved.getType() == PAWN )
-                sb.append(" ");
-            else
-                sb.append(PieceMoved.getType());
+            if ( PieceMoved.getType() == PAWN ) sb.append(" ");
+            else sb.append(PieceMoved.getType());
             sb.append(Game.convertAlgebraicFromIn(fromInRank, fromInFile))
             .append( (PieceCaptured == null) ? "-" : "x" )
             .append(Game.convertAlgebraicFromIn(toInRank, toInFile))
@@ -3371,7 +3402,7 @@ public class Game
      * Square class for methods that return list of squares,
      *         ArrayList of Square objects
      */
-    public static class Square
+    public class Square
     {
         private final int inRank;
         private final int inFile;
@@ -3388,89 +3419,107 @@ public class Game
         public int getRank() { return Game.convertChessRankFromInRank(inRank); }
         public int getFile() { return Game.convertChessFileFromInFile(inFile); }
         @Override public String toString() { return Game.convertAlgebraicFromIn(inRank, inFile); }
+        public ChessPiece getPiece() { return Game.this.GameBoard[inRank][inFile]; }
+        public boolean isOccupied() { return Game.this.GameBoard[inRank][inFile] != null; }
+        public boolean isEqual(Square square) 
+            { return this.inRank == square.inRank && this.inFile == square.inFile; }
         
-        // get piece
-        //public ChessPiece getPiece() { return Game.this.GameBoard[inRank][inFile]; }
-        
-        public boolean isEqual(Square square)
-        { return this.inRank == square.inRank && this.inFile == square.inFile; }
-        
-        public static boolean isEqual(Square square1, Square square2)
-        { return square1.inRank == square2.inRank && square1.inFile == square2.inFile; }
-        
-        // Static helper methods
-        //public static List<Square> getDiagonals(Square square)
-        //{ return getDiagonals(square.inRank, square.inFile); }
-        
-        private static List<Square> getDiagonals(int inRank, int inFile)
-        {
-            ArrayList<Square> returnList = new ArrayList<>();
-            
-            for (int dRank = -1; dRank <= 1; dRank += 2  )
-                for (int dFile = -1; dFile <= 1; dFile += 2  )
-                    for (int i = 1; i < BOARD_NUMBER_RANKS; i++) // assumes board is square
-                    {
-                        int newInRank = inRank + i * dRank;
-                        int newInFile = inFile + i * dFile;
-                        if (!isValidInCoord(newInRank,newInFile))
-                            break;
-                        returnList.add(new Square(newInRank,newInFile));
-                    }
-            return returnList;
-        }
-        
-        private static List<Square> getFile(int inFile)
-        {
-            ArrayList<Square> returnList = new ArrayList<>();
-            if ( inFile < 0 || inFile > 7 )
-                return returnList;  //return empty
-            for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
-                returnList.add(new Square(i,inFile));
-            return returnList;
-        }
-        
-        private static List<Square> getRank(int inRank)
-        {
-            ArrayList<Square> returnList = new ArrayList<>();
-            if ( inRank < 0 || inRank > 7 )
-                return returnList;  //return empty
-            for (int i = 0; i < BOARD_NUMBER_FILES; i++)
-                returnList.add(new Square(inRank,i));
-            return returnList;
-        }
-        
-        public static List<Square> getInterveningSquares(
-                int inRank1, int inFile1, int inRank2, int inFile2 )
-        {
-            ArrayList<Square> returnList = new ArrayList<>();
-            if ( !isValidInCoord(inRank1,inFile1) || !isValidInCoord(inRank2,inFile2) )
-                return returnList;
-            int rankDif = inRank2 - inRank1;
-            int fileDif = inFile2 - inFile1;
-            int rankDir = rankDif > 0 ? 1 : -1;
-            int fileDir = fileDif > 0 ? 1 : -1;
-            
-            if ( inRank1 == inRank2 ) {
-                for ( int file = inFile1; file != inFile2; file += fileDir)
-                    returnList.add(new Square(inRank1,file));
-            } else if ( inFile1 == inFile2 ) {
-                for ( int rank = inRank1; rank != inRank2; rank += rankDir)
-                    returnList.add(new Square(rank,inFile1));
-            } else if ( abs( (double)(rankDif) / (double)(fileDif) ) == 1.0 ) {
-                int file = inFile1;
-                for ( int rank = inRank1; rank != inRank2; rank += rankDir)
-                {
-                    //add
-                    returnList.add(new Square(rank,file));
-                    file += fileDir;
-                }
-            }
-            return returnList;            
-        }
     }
     
-    // Static square helper methods
-    
+    // ************************************
+    // * * * square helper methods  * * * 
+    public List<Square> getInterveningSquares(int inRank1, int inFile1, int inRank2, int inFile2)
+    {
+        ArrayList<Square> returnList = new ArrayList<>();
+        if (!isValidInCoord(inRank1, inFile1) || !isValidInCoord(inRank2, inFile2))
+        {
+            return returnList;
+        }
+        int rankDif = inRank2 - inRank1;
+        int fileDif = inFile2 - inFile1;
+        int rankDir = rankDif > 0 ? 1 : -1;
+        int fileDir = fileDif > 0 ? 1 : -1;
+        if (inRank1 == inRank2)
+        {
+            for (int file = inFile1; file != inFile2; file += fileDir)
+            {
+                returnList.add(new Square(inRank1, file));
+            }
+        } else if (inFile1 == inFile2)
+        {
+            for (int rank = inRank1; rank != inRank2; rank += rankDir)
+            {
+                returnList.add(new Square(rank, inFile1));
+            }
+        } else if (abs((double) (rankDif) / (double) (fileDif)) == 1.0)
+        {
+            int file = inFile1;
+            for (int rank = inRank1; rank != inRank2; rank += rankDir)
+            {
+                //add
+                returnList.add(new Square(rank, file));
+                file += fileDir;
+            }
+        }
+        return returnList;
+    }
+
+    private List<Square> getFile(int inFile)
+    {
+        ArrayList<Square> returnList = new ArrayList<>();
+        if (inFile < 0 || inFile > 7)
+        {
+            return returnList; //return empty
+        }
+        for (int i = 0; i < BOARD_NUMBER_RANKS; i++)
+        {
+            returnList.add(new Square(i, inFile));
+        }
+        return returnList;
+    }
+
+    // Static helper methods
+    //public static List<Square> getDiagonals(Square square)
+    //{ return getDiagonals(square.inRank, square.inFile); }
+    private List<Square> getDiagonals(int inRank, int inFile)
+    {
+        ArrayList<Square> returnList = new ArrayList<>();
+        for (int dRank = -1; dRank <= 1; dRank += 2)
+        {
+            for (int dFile = -1; dFile <= 1; dFile += 2)
+            {
+                for (int i = 1; i < BOARD_NUMBER_RANKS; i++) // assumes board is square
+                {
+                    int newInRank = inRank + i * dRank;
+                    int newInFile = inFile + i * dFile;
+                    if (!isValidInCoord(newInRank, newInFile))
+                    {
+                        break;
+                    }
+                    returnList.add(new Square(newInRank, newInFile));
+                }
+            }
+        }
+        return returnList;
+    }
+
+    private List<Square> getRank(int inRank)
+    {
+        ArrayList<Square> returnList = new ArrayList<>();
+        if (inRank < 0 || inRank > 7)
+        {
+            return returnList; //return empty
+        }
+        for (int i = 0; i < BOARD_NUMBER_FILES; i++)
+        {
+            returnList.add(new Square(inRank, i));
+        }
+        return returnList;
+    }
+
+    public static boolean isEqual(Square square1, Square square2)
+        { return square1.inRank == square2.inRank && square1.inFile == square2.inFile; }
+
     
     
     
@@ -3480,9 +3529,6 @@ public class Game
      *********************************************************/
     public final class GameStats
     {
-        /**
-         *
-         */
         public RecordOfMove move;
         public boolean isGameActive;
         public int gameStateCode;

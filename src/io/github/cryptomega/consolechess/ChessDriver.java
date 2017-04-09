@@ -3,13 +3,10 @@
  */
 package io.github.cryptomega.consolechess;
 
-//import io.github.cryptomega.chess.Game.ChessPiece;
-import java.util.ArrayList;
 //import java.util.ArrayList;
 //import java.util.Arrays;
 import java.util.Scanner;
 
-//import chesspresso.pgn.PGNReader;
 
 import io.github.cryptomega.chess.Game;
 import io.github.cryptomega.chess.Game.ChessPiece;
@@ -17,6 +14,7 @@ import io.github.cryptomega.chess.GameListener;
 import io.github.cryptomega.chess.PieceListener;
 
 import io.github.cryptomega.chess.PGNLoader;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,62 +26,42 @@ import java.util.logging.Logger;
 public class ChessDriver  
 {
 
+    // PGN loader
+    private static PGNLoader loader = null;
+    final private static String PGN_GAMES = "pgn\\Fischer.pgn";
+    final private static int BOARD_HALF_WIDTH = (int)(45 / 2);
+    final private static int REPLAY_DELAY = 650;
+    
 /**
  * @param args the command line arguments
  */
 public static void main(String[] args)
 {
-    // TODO: try out pgn parser
-    //PGNLoader loader = new PGNLoader("testFile.pgn");
-    //PGNLoader loader = new PGNLoader("Adams.pgn");
-
-    
     // setup and start the chess game
-    Game myGame = new Game();
-    myGame.setupStandardGame();
-    myGame.setStartTime(10, 10);
-    myGame.startGame();
-    
-    // register listener
-    myGame.addGameStateListener( new GameStateListener() );
+    Game myGame = new Game().setupStandardGame().setStartTime(1, 0).startGame();
+    myGame.addGameStateListener( new GameStateListener() ); // register listener
 
-    PGNLoader loader = null;
-    
     // add piece liseners too all the pieces. GO CRAZY
     for ( ChessPiece piece : myGame.getPieces() )
         piece.addPieceListener(new MyPieceListener() );
 
     // input string variable
-    String input;
     Scanner scanner = new Scanner(System.in);
-
-
+    String message = "";
 
     OUTER:
     while (true)
     {
-        if ( !myGame.isGameActive() )
-        {   System.out.println("GAME OVER: " + myGame.getGameStatus());
-        } else {
-            System.out.print( myGame.getMoveNumber() + ". " 
-                    +  myGame.getGameStatus() + "   ");
-            //int secs = (int)myGame.getSecondsRemaining();
-            System.out.println( myGame.getTimeLeft() );
-        }
-
-
-        //ChessPiece[][] board = myGame.getBoard();
+        printHeader(myGame);
         printBoard(myGame);
-
-        System.out.println("      <RESTART|DRAW|RESIGN|ANALYZE|EXIT>");
-        System.out.print("Enter move:");
-
-        input = scanner.nextLine();
-        //input = input.toUpperCase();
+        printPrompt(message);
+        message = "";
+        String input = scanner.nextLine();
+        
         switch ( input.toUpperCase() ) {
             case "REFRESH":
                 myGame.refreshListeners();
-                break;
+                continue;
             case "RESTART":
                 myGame.restartGame();
                 continue;
@@ -119,46 +97,36 @@ public static void main(String[] args)
                 debug(myGame);
                 continue;
             case "SIG":
-                System.out.println(myGame.getBoardPositionSignature());
+                message = myGame.getBoardPositionSignature();
                 continue;
             case "FEN":
-                System.out.println( myGame.getFEN() );
+                message = myGame.getFEN();
                 continue;
             case "LOAD":
-                if ( loader == null ) loader = new PGNLoader("pgn\\Fischer.pgn");
-                myGame.endGame(); // myGame.release() ?
-                myGame.releaseListeners();
-                myGame = loader.getNextGame(); // TODO: implement PGNLoader
+                myGame.endGame().releaseListeners();
+                myGame = loadPGN(PGN_GAMES);
                 continue;
             case "REPLAY":
-                while( myGame.takebackMove() ) {}
-                while ( myGame.redo() ) 
-                { 
-                    printBoard(myGame);
-                    try { Thread.sleep(500); }
-                    catch (InterruptedException ex)
-                    { Logger.getLogger(ChessDriver.class.getName()).log(Level.SEVERE, null, ex); }
-                }
-                break;
+                replay(myGame);
+                continue;
+            case "HISTORY":
+                message =  myGame.getCompleteMoveHistory();
+                continue;
             default:
-                break;
+                // make sure game is active
+                if ( !myGame.isGameActive() ) message = "> > > Game is inactive < < <";
+                
+                // validate move
+                else if ( input.matches("(?i)VALIDATE.*") ) message = validate(myGame, input);
+                
+                // additional commands with parameters can be received here
+                
+                else // try to make the move
+                {
+                    int code = myGame.makeMove(input);
+                    message = "> > > " + Game.getMoveCodeText(code) + " ("+code+") < < <";
+                }
         }
-        if ( !myGame.isGameActive() ) {
-            System.out.println("Game is inactive");
-            continue;
-        }
-
-        int code;
-        try { code = myGame.makeMove(input); }
-        catch (Exception e) 
-        {
-            System.out.println(" > > > ERROR:" + e.getMessage() + " < < <");
-            continue;
-        }
-        //System.out.println( myGame.getCompleteMoveHistory() );
-        System.out.println(" > > > " 
-                + Game.getMoveCodeText(code)
-                + " ("+code+") < < <");
     }
 }
 
@@ -191,15 +159,11 @@ public static void analyze(Game myGame)
             continue;
         }
 
-        // DEBUG System.out.println("\n");
         System.out.println(" > > > " 
                 + Game.getMoveCodeText(code)
                 + " ("+code+") < < <");
-        // DEBUG
     }
 }
-
-
 
 
 public static void printCandidateMoves(ChessPiece piece)
@@ -210,7 +174,7 @@ public static void printCandidateMoves(ChessPiece piece)
         return;
     }
     System.out.print("Printing valid moves: ");
-    ArrayList<Game.Square> list = piece.getValidMoves();
+    List<Game.Square> list = piece.getValidMoves();
     for (Game.Square square: list)
     {
         System.out.print(square.toString() + ",");
@@ -283,6 +247,44 @@ private static void printLastRow()
     System.out.println("-\u2500-\u2518");
 }
 
+
+    private static void printHeader(Game myGame)
+    {
+        int n = myGame.getMatchTitle().length();  // count number of characters
+        n = n / 2 + BOARD_HALF_WIDTH;
+        System.out.println( String.format("%1$"+n+"s", myGame.getMatchTitle() ) ); // title
+        System.out.println( myGame.getLastMove() ); // last move
+        
+        if ( !myGame.isGameActive() ) { // if game is over
+            System.out.println("GAME OVER: " + myGame.getGameStatus());
+        } else {
+            String status = "(" + myGame.getMoveNumber() + ") " +  myGame.getGameStatus();
+            System.out.print(status);
+            if ( myGame.isTimed() ) 
+            {
+                n = 2*BOARD_HALF_WIDTH - status.length();
+                System.out.print(String.format("%1$"+n+"s", myGame.getTimeLeft() )  );
+            }
+            System.out.println();
+        }
+    }
+    
+    private static void printPrompt(String message)
+    {
+        System.out.println("  <RESTART|DRAW|RESIGN|TAKEBACK|REDO|EXIT>");
+        System.out.println("     <HISTORY|FEN|ANALYZE|LOAD|REPLAY>");
+        System.out.println("  <DEBUG|REFRESH|SIG|TAKEBACKALL|VALIDATE>");
+        if ( !message.equals("") ) 
+        {
+            int n = message.contains("\n") ? 1 :
+                message.length() / 2 + BOARD_HALF_WIDTH;
+            System.out.println(String.format("%1$"+n+"s", message));
+        }
+        
+        System.out.print("Enter move:");
+    }
+    
+
 private static void debug(Game myGame)
 {
 
@@ -325,7 +327,6 @@ private static void debug(Game myGame)
     "e2 h5", "e5 h5",
     "e1 e2", "h5 e2",
 
-
     // repeat moves to test draw
     "g1 h1", "g8 h8",
     "h1 g1", "h8 g8",
@@ -337,57 +338,7 @@ private static void debug(Game myGame)
     "h1 g1", "h8 g8",
     "g1 h1", "g8 h8",
     "h1 g1", "h8 g8",
-    /*
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-
-
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    "g1 h1", "g8 h8",
-    "h1 g1", "h8 g8",
-    */
-
-
-    /*
-
-    // */
+    
      };
 
     for (String move : movelist)
@@ -408,7 +359,7 @@ private static void debug(Game myGame)
         //Game.ChessPiece movingPiece = myGame.getPieceAt(fromRank,fromFile);
         //int code = myGame.validateMove(fromRank, fromFile, toRank, toFile);
         int code;
-        char promo = ' '; 
+        //char promo = ' '; 
         /*
         if ( move.length() >= 7) promo = move.charAt(6);
         if ( movingPiece == null ) {
@@ -421,11 +372,47 @@ private static void debug(Game myGame)
         }
         */
         code = myGame.makeMove(move);
-        System.out.println("DEBUG:" + Game.getMoveCodeText(code));
+        //System.out.println("DEBUG:" + Game.getMoveCodeText(code));
     }
     //System.out.println( myGame.getCompleteMoveHistory() );
     //*/ // END DEBUG
 }
+
+
+
+    private static void replay(Game myGame)
+    {
+        while( myGame.takebackMove() ) {}
+                while ( myGame.redo() ) 
+                { 
+                    printHeader(myGame);
+                    printBoard(myGame);
+                    try { Thread.sleep(REPLAY_DELAY); }
+                    catch (InterruptedException ex)
+                    { Logger.getLogger(ChessDriver.class.getName()).log(Level.SEVERE, null, ex); }
+                }
+    }
+
+    private static Game loadPGN(String pgn)
+    {
+        if ( loader == null ) loader = new PGNLoader(pgn);
+        return loader.getNextGame(); 
+    }
+
+    private static String validate(Game myGame, String input)
+    {
+        //System.out.println("DEBUG:VALIDATE ");
+        if ( input.length() <= 9 ) return "Command usage: 'validate MOVE'";
+    
+        String move = input.substring(8).trim();
+        int code = myGame.validateMove( move );
+        return "Move[" +  move + "]: " 
+                + Game.getMoveCodeText(code)
+                + " ("+code+")";
+    }
+
+
+
 
 
 // ********************************************************

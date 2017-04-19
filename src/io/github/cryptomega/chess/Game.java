@@ -34,6 +34,8 @@ public class Game
     
     public static final int BOARD_NUMBER_RANKS = 8;
     public static final int BOARD_NUMBER_FILES = 8;
+    public static final int CHESSPEICE_LIST_CAPACITY = 35;
+    public static final int HISTORY_PADDING = 7;
     
     // Piece types
     public static final char KING =   'K';
@@ -214,7 +216,7 @@ public class Game
                 GameState = STATUS_DRAW_BLACK_CLAIMS_THREE;
                 isGameActive = false;
                 break;
-        }  // TODO: implement more game state checks
+        }  
 
         GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
         GameTurnCount++; // transitions turn to other player, increment turn count
@@ -237,19 +239,14 @@ public class Game
                         STATUS_DRAW_WHITE_CLAIMS_THREE : STATUS_DRAW_BLACK_CLAIMS_THREE;
             } 
             
-
         if( isTimedGame && GameTimer != null ) // switch over clock
-        {   if ( isGameActive )
-                GameTimer.switchTimer();
-            else
-                GameTimer.stopTimer();
+        {   if ( isGameActive ) GameTimer.switchTimer();
+            else GameTimer.stopTimer();
         }
 
         // reset draw flag as player's turn is starting, after draw claim checked
-        if ( GameWhoseTurn == WHITE )
-            GameWhiteOffersDraw = false;
-        else
-            GameBlackClaimsDraw = false;
+        if ( GameWhoseTurn == WHITE ) GameWhiteOffersDraw = false;
+        else GameBlackClaimsDraw = false;
         
         // calls game state listeners
         if ( isGameActive ) pushGameStateUpdate();
@@ -269,21 +266,21 @@ public class Game
     /* *************************************************
      * * * * ArrayList of all chess pieces * * * 
      * *************************************************/
-    private final ArrayList<ChessPiece> GamePieces;  // refractor to List<>
+    private final ArrayList<ChessPiece> GamePieces;  
     
     /* *************************************************
      * * * * History ArrayList * * * 
      * ************************************************/
-    private final ArrayList<RecordOfMove> GameHistory;  // refractor to List<>
+    private final ArrayList<RecordOfMove> GameHistory;  
     
     // hold future moves if for navigating through moves
-    private final ArrayList<RecordOfMove> GameFuture; // refractor to List<>
+    private final ArrayList<RecordOfMove> GameFuture; 
     
 
     /* *************************************************
      * * * * Game State Listeners * * * 
      * ************************************************/
-    private ArrayList<GameListener> GameStateListeners;  // refractor to List<>
+    private ArrayList<GameListener> GameStateListeners;  
     
     
     /** ************************************************
@@ -295,10 +292,10 @@ public class Game
      * *************************************************/
     public Game()
     {
-        GamePieces = new ArrayList<>();
+        GamePieces = new ArrayList<>(CHESSPEICE_LIST_CAPACITY);
         GameHistory = new ArrayList<>();
         this.GameFuture = new ArrayList<>();
-        GameStateListeners = new ArrayList<>();
+        GameStateListeners = new ArrayList<>(1);
         
         clearGame(); 
         
@@ -355,10 +352,10 @@ public class Game
         this.GameBlackTimeLeft  = originalGame.GameBlackTimeLeft;  // time left in seconds
         
         // initialize lists
-        this.GamePieces = new ArrayList<>();
+        this.GamePieces = new ArrayList<>(CHESSPEICE_LIST_CAPACITY);
         this.GameHistory = new ArrayList<>();
         this.GameFuture = new ArrayList<>();
-        this.GameStateListeners = new ArrayList<>();
+        this.GameStateListeners = new ArrayList<>(1);
         this.clearBoard();
         
         // initialize patterns
@@ -448,7 +445,7 @@ public class Game
                         
         }
         
-        public void releaseListeners()
+        public void releaseAllListeners()
         {
             if ( GameStateListeners != null && !GameStateListeners.isEmpty() )
                 GameStateListeners.clear();
@@ -542,9 +539,21 @@ public class Game
      * Adds a game state listener.
      * @param listener implements GameListener interface
      */
-    public void addGameStateListener(GameListener listener)
-    { GameStateListeners.add(listener); }
+    public void registerGameStateListener(GameListener listener)
+    { 
+        if ( !GameStateListeners.contains(listener) )
+            GameStateListeners.add(listener); 
+    }
     
+    /**
+     * Adds a game state listener.
+     * @param listener implements GameListener interface
+     */
+    public void unregisterGameStateListener(GameListener listener)
+    { 
+        if ( GameStateListeners!= null && GameStateListeners.contains(listener) )
+            GameStateListeners.remove(listener); 
+    }
 
     
     /**
@@ -552,15 +561,17 @@ public class Game
      * @return a String containing all the moves, 
      *         one line per turn
      */
-    public String getCompleteMoveHistory()
+    public String getHistory() 
     {
         StringBuilder history = new StringBuilder();
         boolean whitesTurn = true;
         for ( RecordOfMove item : GameHistory )
         {
             if ( whitesTurn )
-                history.append(item.moveNumber).append(". ");
-            history.append( item.moveText );
+                history.append( String.format("%1$3s", item.moveNumber) ).append(".");
+            
+            history.append( String.format("%1$"+HISTORY_PADDING+"s", item.moveText) );
+            
             if ( whitesTurn )
                 history.append( " ");
             else
@@ -585,7 +596,7 @@ public class Game
         initTimer();          // initialize timer
         clearBoard();         // clear game board
         clearHistory();       // clear history
-        releaseListeners(); // release listeners
+        releaseAllListeners(); // release listeners
         clearPieces(); // clear pieces array
         return this;
     }
@@ -825,10 +836,18 @@ public class Game
             String loc = matcherDisamb.group(2); // from location
             String to = matcherDisamb.group(3); // to location
             String promo = matcherDisamb.group(4);
-            ChessPiece p;
-            try { p = this.matchPiece(piece, loc, to); }
-            catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
-            if ( p == null ) return MOVE_ILLEGAL;
+            
+            ///\\\\\\\\\\\\\\\\\
+            //\/////////////////
+            
+            List<ChessPiece> matches = this.matchPiece(piece, loc, to);
+            if ( matches.isEmpty() ) return MOVE_ILLEGAL;
+            else if ( matches.size() > 1 ) return AMBIGUOUS_MOVE;
+            ChessPiece p = matches.get(0);
+            
+            
+            //////////////
+            
             if ( promo.equals("") ) // check for promotion
                 return p.makeMoveIn(
                     convertInRankFromAlgebraic(to),
@@ -852,7 +871,7 @@ public class Game
      * @return an integer move Code. You can use boolean Game.isMoveCodeLegal(Code)
      *         and String Game.getMoveCodeText(Code)
      */
-    public int validateMove(String move) // TODO: update to regex match
+    public int validateMove(String move) 
     {
         if ( matcherCastle.reset(move).find() ) { // castling check
              
@@ -875,10 +894,12 @@ public class Game
             String piece = matcherDisamb.group(1); // from piece
             String loc = matcherDisamb.group(2); // from location
             String to = matcherDisamb.group(3); // to location
-            ChessPiece p;
-            try { p = this.matchPiece(piece, loc, to); }
-            catch (IllegalArgumentException ex) { return AMBIGUOUS_MOVE; }
-            if ( p == null ) return MOVE_ILLEGAL;
+            
+            List<ChessPiece> matches = this.matchPiece(piece, loc, to);
+            if ( matches.isEmpty() ) return MOVE_ILLEGAL;
+            else if ( matches.size() > 1 ) return AMBIGUOUS_MOVE;
+            ChessPiece p = matches.get(0);
+            
             return p.validateMoveIn(
                     convertInRankFromAlgebraic(to),
                     convertInFileFromAlgebraic(to) );
@@ -975,7 +996,7 @@ public class Game
     protected int makeMoveIn(int fromRank, int fromFile, int toRank, int toFile, char promotionType)
     {
         if ( !isValidInCoord(fromRank, fromFile) || !isValidInCoord(toRank, toFile) )
-            throw new IllegalArgumentException("Invalid arguements for makeMove"); // TODO: soft fail
+            return MOVE_ILLEGAL; //  soft fail
         // call makeMove(rank,file,promotionType) on the chess piece!
         if ( GameBoard[fromRank][fromFile] == null )
             return MOVE_ILLEGAL_SQUARE_EMPTY;
@@ -1360,7 +1381,7 @@ public class Game
     private static int convertChessFileFromInFile(int inFile)
     {   return inFile + 1; }
     
-    private static String convertAlgebraicFromIn(int inRank, int inFile) // TODO: return to private
+    private static String convertAlgebraicFromIn(int inRank, int inFile)
     {   if ( !isValidInCoord(inRank, inFile) )
             throw new IllegalArgumentException("Invalid Coordinate");
         return ((char) (inFile+97)) + String.valueOf(inRank + 1);
@@ -1580,17 +1601,22 @@ public class Game
         return GameBoard[r][f] != null;
     }
 
+    public ChessPiece getPieceAt(String position)
+    {   return getPieceAt(
+                convertChessRankFromAlgebraic(position),
+                convertChessFileFromAlgebraic(position) );
+    }
+    
     /**
      * Returns the piece at specified square, or null if the square is empty
      * @param chessRank 1-8
      * @param chessFile 1-8
-     * @throws IllegalArgumentException
      * @return ChessPiece reference or null
      */
     public ChessPiece getPieceAt(int chessRank, int chessFile)
     {
         if ( !Game.isValidChessCoord(chessRank,chessFile) )
-            throw new IllegalArgumentException("No such square."); 
+            return null; 
         
         int r = convertInRankFromChessRank(chessRank);
         int f = convertInFileFromChessFile(chessFile);
@@ -1732,19 +1758,21 @@ public class Game
     private boolean drawThreefoldRepetition()
     {
         Game copy = new Game(this);
-        String currentBoard = copy.getBoardPositionSignature();
+        String currentBoardSig = copy.getBoardPositionSignature();
+        int currentPlayer = copy.GameWhoseTurn;
         int repeats = 1;
         //System.out.println("CUR: " + currentBoard); //DEBUG
         
-        while ( copy.takebackMove() )  // TODO: take back 2 moves at a time
+        while ( copy.takebackMove() )  
         {
             RecordOfMove move = copy.GameFuture.get( copy.GameFuture.size() - 1 ); // get last move
             // pawn moves or captures essentially resets the possible board positions
             if ( move.PieceMoved.getType() == PAWN || move.PieceCaptured != null ) return false;
+            if ( copy.GameWhoseTurn != currentPlayer ) continue;
             
             String compareBoard = copy.getBoardPositionSignature();
             //System.out.println("SIG: " + compareBoard); //DEBUG
-            if ( currentBoard.equals(compareBoard) ) repeats++;
+            if ( currentBoardSig.equals(compareBoard) ) repeats++;
             if ( repeats >= 3 ) return true;
         }
         return false;
@@ -1918,13 +1946,9 @@ public class Game
     {
         try
         {
-            // TODO: add piece disambiguoate matcher
-            
             matcherFull = Pattern.compile(REGEX_MOVE_FULL).matcher("");
             matcherCastle = Pattern.compile(REGEX_CASTLE).matcher("");
             matcherDisamb = Pattern.compile(REGEX_MOVE_DISAMB).matcher("");    
-            //matcherPromo = Pattern.compile(REGEX_PROMO).matcher("");  
-            //matcherDisambig = Pattern.compile(REGEX_DISAMBIG).matcher("");
         } catch(PatternSyntaxException pse) { // DEBUG
                 System.out.println("There is a problem" +
                                " with the regular expression!");
@@ -1940,9 +1964,9 @@ public class Game
               
     }
 
-    private ChessPiece matchPiece(String typeStr, String location, String to)
+    private List<ChessPiece> matchPiece(String typeStr, String location, String to)
     {
-         char type = 'P';
+        char type = 'P';
         if ( !typeStr.equals("") ) type = typeStr.charAt(0);
         int disambig = -1;
         boolean disambigRank = false;
@@ -1958,7 +1982,8 @@ public class Game
         }
         
         // search ChessPieces
-        ChessPiece match = null;
+        ArrayList<ChessPiece> matches = new ArrayList<>(3);
+        //ChessPiece match = null;
         for ( ChessPiece piece : this.GamePieces )
         {
             if ( piece.Color != GameWhoseTurn ) continue; // piece must be for current player
@@ -1979,16 +2004,10 @@ public class Game
                 continue;  // skip if piece is not observing to square
             }
             
-            // at this point, we have a hit
-            if ( match != null ) 
-            {
-                // TODO: try to use validateMove to disambiguate
-                throw new IllegalArgumentException("Can not disambiguate move.");   // already had a hit, cannot disambiguate
-            }
-            
-            match = piece;
+            matches.add(piece);
+            //match = piece;
         }
-        return match;
+        return matches;
     }
 
     public String getMatchTitle()
@@ -2049,7 +2068,7 @@ public class Game
          */
         protected ChessPiece(int color, char type)
         {
-            PieceListeners = new ArrayList<>();
+            PieceListeners = new ArrayList<>(1);
             if ( color != WHITE && color != BLACK ) // validate color 
                 throw new IllegalArgumentException("Invalid color.");
             Color = color;
@@ -2081,8 +2100,21 @@ public class Game
          * Adds a listener to receive update callback from the piece
          * @param listener 
          */
-        public void addPieceListener(PieceListener listener)
-        { PieceListeners.add(listener); }
+        public void registerPieceListener(PieceListener listener)
+        { 
+            if ( PieceListeners != null && !PieceListeners.contains(listener) )
+                PieceListeners.add(listener); 
+        }
+        
+        /**
+         * Removes a listener to receive update callback from the piece
+         * @param listener 
+         */
+        public void unregisterPieceListener(PieceListener listener)
+        { 
+            if ( PieceListeners != null && PieceListeners.contains(listener) )
+                PieceListeners.remove(listener); 
+        }
         
         /**
          * Makes a move given the algebraic coordinate of target square
@@ -2722,6 +2754,7 @@ public class Game
                     returnList.add(new Square(inRank,6));
                     returnList.add(new Square(inRank,2));
                 } else {
+                    // king hasn't moved, but isn't in default starting location
                     // TODO: make castling discoverable as candidate move in Chess960 
                 }
             }
@@ -3229,7 +3262,7 @@ public class Game
         // TODO: have method to convert piece reference to string with starting square
         final public int moveNumber;
         final public int whoseTurn;
-        final public String moveText;   // TODO: use PGN formatting. Readable move notation 
+        final public String moveText;  
         // TODO: add comment field
         // The piece moved. required
         final public ChessPiece PieceMoved;
@@ -3300,7 +3333,7 @@ public class Game
             if ( PiecePromoted != null )
                 promotionType = PiecePromoted.getType();
             else
-                promotionType = 'x';
+                promotionType = ' ';
             
             RookCastled = null;
             this.Checkmate = checkmate;
@@ -3308,13 +3341,29 @@ public class Game
             this.whoseTurn = GameWhoseTurn;
             moveNumber = getMoveNumber();
             
-            // construct move string
+            // construct move string 
             StringBuilder sb = new StringBuilder();
-            if ( PieceMoved.getType() == PAWN ) sb.append(" ");
-            else sb.append(PieceMoved.getType());
-            sb.append(Game.convertAlgebraicFromIn(fromInRank, fromInFile))
-            .append( (PieceCaptured == null) ? "-" : "x" )
-            .append(Game.convertAlgebraicFromIn(toInRank, toInFile))
+            String to = convertAlgebraicFromIn(toInRank,toInFile);
+            String from = convertAlgebraicFromIn(fromInRank,fromInFile);
+            if ( PieceMoved.getType() == PAWN )
+            {   if ( PieceCaptured != null ) sb.append( from.charAt(0) ).append("x");
+            } else {
+                // append piece move prefix
+                String type = "" + PieceMoved.getType();
+                sb.append( type );
+                if ( !matchPiece(type, "", to).isEmpty() )  
+                {   // need to disambiguate
+                    if ( matchPiece(type, "" + from.charAt(0), to).isEmpty() )
+                        sb.append( from.charAt(0) ); // disambiguate with file
+                    else if ( matchPiece(type, "" + from.charAt(1), to).isEmpty() )
+                        sb.append( from.charAt(1) ); // disambiguate with rank
+                    else
+                        sb.append(from); // disambiguate with rank and file
+                }
+                if ( PieceCaptured != null ) sb.append("x");
+            }
+            
+            sb.append( to )
             .append( (PiecePromoted == null) ? "" : "=" + promotionType )
             .append( checkmate ? "#" : check ? "+" : "");
             moveText = sb.toString();
@@ -3350,7 +3399,7 @@ public class Game
             PieceCaptured = null;
             EnPassant = false;
             PiecePromoted = null;
-            promotionType = 'x';
+            promotionType = ' ';
             this.Checkmate = checkmate;
             this.Stalemate = stalemate;
             this.whoseTurn = GameWhoseTurn;
@@ -3358,10 +3407,11 @@ public class Game
             
             StringBuilder sb = new StringBuilder();
             
+            // generate move text
             if ( castledRook.StartInFile < movedFromFile  )
-                sb.append(" 0-0-0");
+                sb.append("O-O-O");
             else
-                sb.append("   0-0");
+                sb.append("O-O");
             if ( checkmate )
                 sb.append("#");
             else if ( check )
@@ -3564,6 +3614,5 @@ public class Game
                 this.move = null;
         }
     }
-
 }
  

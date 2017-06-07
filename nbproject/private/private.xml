@@ -5,7 +5,11 @@
         <group>
             <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/PGNLoader.java</file>
             <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/consolechess/ChessDriver.java</file>
+            <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/GameTimer.java</file>
+            <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/GameListener.java</file>
+            <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/PieceListener.java</file>
             <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/Game.java</file>
+            <file>file:/E:/Code/NetBeans/Chess/src/io/github/cryptomega/chess/TimerController.java</file>
         </group>
     </open-files>
 </project-private>

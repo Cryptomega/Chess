@@ -155,103 +155,7 @@ public class Game
     
     
     
-    /**
-     * Makes end of turn game state updates, as well as check
-     * for end of game conditions. 
-     * @param StateCode can contains the player state code of the
-     *          player who's turn is about to begin or  
-     *          it can be a Game State code 
-     */
-    private void endTurn(int StateCode)
-    {   switch (StateCode) // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
-        {   case PLAYER_OK:
-                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACKS_TURN : STATUS_WHITES_TURN;
-                break;
-            case PLAYER_IN_CHECK:
-                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACK_IN_CHECK : STATUS_WHITE_IN_CHECK;
-                break;
-            case PLAYER_IN_CHECKMATE:
-                GameState = (GameWhoseTurn == WHITE) ? 
-                        STATUS_WHITE_WINS_CHECKMATE : STATUS_BLACK_WINS_CHECKMATE;
-                isGameActive = false;
-                break;
-            case PLAYER_IN_STALEMATE:
-                GameState = (GameWhoseTurn == WHITE) ? 
-                        STATUS_DRAW_BLACK_STALEMATE : STATUS_DRAW_WHITE_STALEMATE;
-                isGameActive = false;
-                break;
-            case STATUS_WHITE_WINS_TIME:
-                GameState = STATUS_WHITE_WINS_TIME;
-                isGameActive = false;
-                break;
-            case STATUS_BLACK_WINS_TIME:
-                GameState = STATUS_BLACK_WINS_TIME;
-                isGameActive = false;
-                break;
-            case STATUS_WHITE_WINS_RESIGNATION:
-                GameState = STATUS_WHITE_WINS_RESIGNATION;
-                isGameActive = false;
-                break;
-            case STATUS_BLACK_WINS_RESIGNATION:
-                GameState = STATUS_BLACK_WINS_RESIGNATION;
-                isGameActive = false;
-                break;
-            case STATUS_DRAW_AGREEMENT:
-                GameState = STATUS_DRAW_AGREEMENT;
-                isGameActive = false;
-                break;
-            case STATUS_DRAW_WHITE_CLAIMS_FIFTY:
-                GameState = STATUS_DRAW_WHITE_CLAIMS_FIFTY;
-                isGameActive = false;
-                break;
-            case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
-                GameState = STATUS_DRAW_BLACK_CLAIMS_FIFTY;
-                isGameActive = false;
-                break;
-            case STATUS_DRAW_WHITE_CLAIMS_THREE:
-                GameState = STATUS_DRAW_WHITE_CLAIMS_THREE;
-                isGameActive = false;
-                break;
-            case STATUS_DRAW_BLACK_CLAIMS_THREE:
-                GameState = STATUS_DRAW_BLACK_CLAIMS_THREE;
-                isGameActive = false;
-                break;
-        }  
-
-        GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
-        GameTurnCount++; // transitions turn to other player, increment turn count
-        
-        if ( drawByInsufficientMaterial() )
-        {   GameState = STATUS_DRAW_MATERIAL;
-            isGameActive = false;
-        }
-            
-        // check draw claims
-        if ( GameWhiteOffersDraw || GameBlackClaimsDraw )
-            if ( drawFiftyMoves() )
-            {
-                isGameActive = false;
-                GameState = GameWhiteOffersDraw ? 
-                        STATUS_DRAW_WHITE_CLAIMS_FIFTY : STATUS_DRAW_BLACK_CLAIMS_FIFTY;
-            } else if ( drawThreefoldRepetition() ) {
-                isGameActive = false;
-                GameState = GameWhiteOffersDraw ? 
-                        STATUS_DRAW_WHITE_CLAIMS_THREE : STATUS_DRAW_BLACK_CLAIMS_THREE;
-            } 
-            
-        if( isTimedGame && GameTimer != null ) // switch over clock
-        {   if ( isGameActive ) GameTimer.switchTimer();
-            else GameTimer.stopTimer();
-        }
-
-        // reset draw flag as player's turn is starting, after draw claim checked
-        if ( GameWhoseTurn == WHITE ) GameWhiteOffersDraw = false;
-        else GameBlackClaimsDraw = false;
-        
-        // calls game state listeners
-        if ( isGameActive ) pushGameStateUpdate();
-        else pushGameOverUpdate();
-    }
+    
     
     /************************************************
      * The Chess Board -  This board using an internal
@@ -435,7 +339,7 @@ public class Game
             // game state listeners
             if ( GameStateListeners != null )
                 for (  GameListener listener : GameStateListeners )
-                    listener.onGameStateUpdate( new GameStats() );
+                    listener.onGameStateUpdate( new State(this) );
             
             // piece listeners
             for ( ChessPiece piece : this.GamePieces )
@@ -498,7 +402,7 @@ public class Game
      * Gets the winner of the game, if any
      * @return White, Black, or None
      */
-    public String getWinner()
+    public String getWinner()   // TODO: return int color code instead?
     {   switch(GameState)
         {
             case STATUS_WHITE_WINS_CHECKMATE:
@@ -653,7 +557,7 @@ public class Game
         addPieceToGame(WHITE, BISHOP, 0, 5 );
         addPieceToGame(WHITE, KNIGHT, 0, 6 );
         addPieceToGame(WHITE, ROOK, 0, 7 );
-        for ( int i =0; i<BOARD_NUMBER_FILES; i++)
+        for (int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(WHITE, PAWN, 1, i);
         
         
@@ -665,7 +569,7 @@ public class Game
         addPieceToGame(BLACK, BISHOP, 7, 5 );
         addPieceToGame(BLACK, KNIGHT, 7, 6 );
         addPieceToGame(BLACK, ROOK, 7, 7 );
-        for ( int i =0; i<BOARD_NUMBER_FILES; i++)
+        for (int i =0; i<BOARD_NUMBER_FILES; i++)
             addPieceToGame(BLACK, PAWN, 6, i);
         return this;
     }
@@ -678,6 +582,7 @@ public class Game
     public Game startGame()
     {
         isGameActive = true;
+        this.pushGameStartUpdate();
         return this;
     }
     
@@ -1102,6 +1007,106 @@ public class Game
      * * * * Private Methods * * * 
      * *************************************************/
     
+    /**
+     * Makes end of turn game state updates, as well as check
+     * for end of game conditions. 
+     * @param StateCode can contains the player state code of the
+     *          player who's turn is about to begin or  
+     *          it can be a Game State code 
+     */
+    private void endTurn(int StateCode)
+    {   
+        switch (StateCode) // ONLY METHOD WHICH UPDATES GAME STATE VARIABLES BETWEEN TURNS
+        {   case PLAYER_OK:
+                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACKS_TURN : STATUS_WHITES_TURN;
+                break;
+            case PLAYER_IN_CHECK:
+                GameState = (GameWhoseTurn == WHITE) ? STATUS_BLACK_IN_CHECK : STATUS_WHITE_IN_CHECK;
+                break;
+            case PLAYER_IN_CHECKMATE:
+                GameState = (GameWhoseTurn == WHITE) ? 
+                        STATUS_WHITE_WINS_CHECKMATE : STATUS_BLACK_WINS_CHECKMATE;
+                isGameActive = false;
+                break;
+            case PLAYER_IN_STALEMATE:
+                GameState = (GameWhoseTurn == WHITE) ? 
+                        STATUS_DRAW_BLACK_STALEMATE : STATUS_DRAW_WHITE_STALEMATE;
+                isGameActive = false;
+                break;
+            case STATUS_WHITE_WINS_TIME:
+                GameState = STATUS_WHITE_WINS_TIME;
+                isGameActive = false;
+                break;
+            case STATUS_BLACK_WINS_TIME:
+                GameState = STATUS_BLACK_WINS_TIME;
+                isGameActive = false;
+                break;
+            case STATUS_WHITE_WINS_RESIGNATION:
+                GameState = STATUS_WHITE_WINS_RESIGNATION;
+                isGameActive = false;
+                break;
+            case STATUS_BLACK_WINS_RESIGNATION:
+                GameState = STATUS_BLACK_WINS_RESIGNATION;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_AGREEMENT:
+                GameState = STATUS_DRAW_AGREEMENT;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_WHITE_CLAIMS_FIFTY:
+                GameState = STATUS_DRAW_WHITE_CLAIMS_FIFTY;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_BLACK_CLAIMS_FIFTY:
+                GameState = STATUS_DRAW_BLACK_CLAIMS_FIFTY;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_WHITE_CLAIMS_THREE:
+                GameState = STATUS_DRAW_WHITE_CLAIMS_THREE;
+                isGameActive = false;
+                break;
+            case STATUS_DRAW_BLACK_CLAIMS_THREE:
+                GameState = STATUS_DRAW_BLACK_CLAIMS_THREE;
+                isGameActive = false;
+                break;
+        }  
+
+        GameWhoseTurn = (GameWhoseTurn == WHITE) ? BLACK : WHITE;
+        GameTurnCount++; // transitions turn to other player, increment turn count
+        
+        if ( drawByInsufficientMaterial() )
+        {   GameState = STATUS_DRAW_MATERIAL;
+            isGameActive = false;
+        }
+            
+        // check draw claims
+        if ( GameWhiteOffersDraw || GameBlackClaimsDraw )
+            if ( drawFiftyMoves() )
+            {
+                isGameActive = false;
+                GameState = GameWhiteOffersDraw ? 
+                        STATUS_DRAW_WHITE_CLAIMS_FIFTY : STATUS_DRAW_BLACK_CLAIMS_FIFTY;
+            } else if ( drawThreefoldRepetition() ) {
+                isGameActive = false;
+                GameState = GameWhiteOffersDraw ? 
+                        STATUS_DRAW_WHITE_CLAIMS_THREE : STATUS_DRAW_BLACK_CLAIMS_THREE;
+            } 
+            
+        if( isTimedGame && GameTimer != null ) // switch over clock
+        {   if ( isGameActive ) GameTimer.switchTimer();
+            else GameTimer.stopTimer();
+        }
+
+        // reset draw flag as player's turn is starting, after draw claim checked
+        if ( GameWhoseTurn == WHITE ) GameWhiteOffersDraw = false;
+        else GameBlackClaimsDraw = false;
+        
+        // calls game state listeners
+        if ( isGameActive ) pushGameStateUpdate();
+        else pushGameOverUpdate();
+    }
+    
+    
     // ********** START SETUP HELPERS ***************
     private void resetPieces()
     {
@@ -1168,12 +1173,20 @@ public class Game
     
     
     
-        /**
+    /**
      * pushes an update of the game state to all game state listeners
      */
     private void pushGameStateUpdate()
     { for (GameListener listener : GameStateListeners)
-            listener.onGameStateUpdate(new GameStats()); 
+            listener.onGameStateUpdate(new State(this)); 
+    }
+    
+    /**
+     * pushes an update of the game state to all game state listeners
+     */
+    private void pushGameStartUpdate()
+    { for (GameListener listener : GameStateListeners)
+            listener.onGameStart(new State(this)); 
     }
     
     /**
@@ -1181,7 +1194,7 @@ public class Game
      */
     private void pushGameOverUpdate()
     { for (GameListener listener : GameStateListeners)
-            listener.onGameOver(new GameStats()); 
+            listener.onGameOver(new State(this)); 
     }
 
      // *****************************************************************
@@ -1382,10 +1395,10 @@ public class Game
     {   return inFile + 1; }
     
     private static String convertAlgebraicFromIn(int inRank, int inFile)
-    {   if ( !isValidInCoord(inRank, inFile) )
-            throw new IllegalArgumentException("Invalid Coordinate");
-        return ((char) (inFile+97)) + String.valueOf(inRank + 1);
-    }
+    {   return ((char) (inFile+97)) + String.valueOf(inRank + 1);     }
+    
+    public static String convertAlgebraicFromChess(int rank, int file)
+    {   return convertAlgebraicFromIn(rank - 1, file - 1);   }
     
     
     // get a square color
@@ -2125,6 +2138,8 @@ public class Game
          */
         public int makeMove(String coord)
         {
+            if ( coord.length() < 2 ) return INVALID_COORDINATE;
+            
             return makeMoveIn(Game.convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord) );
         }
@@ -2237,7 +2252,34 @@ public class Game
                     captured, null, 
                     check, checkmate, stalemate ) );
             
-            //  call EndTurn()
+            
+            /* ******************************************************
+            // TODO: consider adding requireConfirmation preference
+                if ( requireConfirmation) {
+                    awaitingMoveConfirmation = true;
+                    // store playerStateCode
+                } else {
+                    endTurn(playerStateCode);
+                }
+            
+                Add methods:
+                /////////////////////////
+                public void confirmMove()
+                {
+                    if ( awaitingMoveConfirmation )
+                        endTurn(playerStateCode);
+                        awaitingMoveConfirmation = false;
+                }
+                
+                public void cancelMove()
+                {
+                    // restore board position
+                    awaitingMoveConfirmation = false;
+                }
+                /////////////////////////
+            ****************************************************** */
+            
+            
             endTurn(playerStateCode);
 
             return code;
@@ -2472,6 +2514,8 @@ public class Game
         public int getMoveCount() { return MoveCount; }
         public String getName() { return Game.getName(Type); }
         public char getUnicode() { return Game.getUnicode(Color, Type); }
+        public Game getGame() { return Game.this; };
+        public boolean isActive() { return this.isActive; }
 
         private void reset()
         {
@@ -2978,9 +3022,11 @@ public class Game
         @Override
         public int makeMove(String coord)
         {
+            if ( coord.length() < 2 ) return INVALID_COORDINATE;
+            
             char promoType = ' ';
             if ( coord.length() >= 4 )
-                promoType = coord.charAt(3);
+                promoType = coord.charAt(3); // TODO: implement better parsing
             return makeMoveIn(Game.convertInRankFromAlgebraic(coord),
                     Game.convertInFileFromAlgebraic(coord), promoType );
         }
@@ -3293,10 +3339,14 @@ public class Game
         { return moveText; }
 
         // getters
+        public String getFrom() { return convertAlgebraicFromIn(fromInRank, fromInFile); }
+        public String getTo() { return convertAlgebraicFromIn(toInRank, toInFile); }
         public int getFromRank() {return convertChessRankFromInRank(fromInRank);}
         public int getFromFile() {return convertChessFileFromInFile(fromInFile);}
         public int getToRank() {return convertChessRankFromInRank(toInRank);}
         public int getToFile() {return convertChessFileFromInFile(toInFile);}
+        public String getCapturedSquare()
+        { return convertAlgebraicFromChess(getCapturedRank(), getCapturedFile() ); }
         public int getCapturedRank()
         {   if ( EnPassant ) return convertChessRankFromInRank(fromInRank);
             else return convertChessRankFromInRank(toInRank);        
@@ -3349,7 +3399,7 @@ public class Game
             {   if ( PieceCaptured != null ) sb.append( from.charAt(0) ).append("x");
             } else {
                 // append piece move prefix
-                String type = "" + PieceMoved.getType();
+                String type = "" + PieceMoved.getType(); // get type and convert to String
                 sb.append( type );
                 if ( !matchPiece(type, "", to).isEmpty() )  
                 {   // need to disambiguate
@@ -3577,42 +3627,30 @@ public class Game
      * Helper class for Game State Listener
      * TODO: pack some more information into this class
      *********************************************************/
-    public final class GameStats
+    final static public class State
     {
+        public Game game;
         public RecordOfMove move;
         public boolean isGameActive;
         public int gameStateCode;
-        public String gameState;
+        public String status;
         public String winner;
         
         /**
          * Packages information about the current game state
          * to be sent to game state listeners
          */
-        private GameStats()
+        private State(Game aGame)
         {
             // TODO: package more information to send to listener
-            this.isGameActive = isGameActive();
-            //this.isGameActive = Game.this.isGameActive;
-            this.gameStateCode = Game.this.GameState;
-            this.gameState = Game.getGameStatusText(GameState);
-            this.winner = Game.this.getWinner();
-            
-            /*
-            // TODO: add these game stats
-            private int GameWhoseTurn;
-            private int GameTurnCount;
-            private boolean GameWhiteOffersDraw;
-            private boolean GameBlackClaimsDraw;
-            private double GameWhiteTimeLeft;  // time left in seconds
-            private double GameBlackTimeLeft;  // time left in seconds
-            */
-            
-            if ( !GameHistory.isEmpty() )
-                this.move = GameHistory.get( GameHistory.size() - 1 );
-            else
-                this.move = null;
+            this.game = aGame;
+            this.move = aGame.getLastMoveRecord();
+            this.isGameActive = aGame.isGameActive();
+            this.gameStateCode = aGame.GameState;
+            this.status = Game.getGameStatusText(gameStateCode);
+            this.winner = aGame.getWinner();
         }
-    }
-}
+    } 
+    
+} 
  

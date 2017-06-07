@@ -39,11 +39,11 @@ public static void main(String[] args)
 {
     // setup and start the chess game
     Game myGame = new Game().setupStandardGame().setStartTime(1, 0).startGame();
-    myGame.addGameStateListener( new GameStateListener() ); // register listener
+    myGame.registerGameStateListener( new GameStateListener() ); // register listener
 
     // add piece liseners too all the pieces. GO CRAZY
     for ( ChessPiece piece : myGame.getPieces() )
-        piece.addPieceListener(new MyPieceListener() );
+        piece.registerPieceListener(new MyPieceListener() );
 
     // input string variable
     Scanner scanner = new Scanner(System.in);
@@ -103,14 +103,14 @@ public static void main(String[] args)
                 message = myGame.getFEN();
                 continue;
             case "LOAD":
-                myGame.endGame().releaseListeners();
+                myGame.endGame().releaseAllListeners();
                 myGame = loadPGN(PGN_GAMES);
                 continue;
             case "REPLAY":
                 replay(myGame);
                 continue;
             case "HISTORY":
-                message =  myGame.getCompleteMoveHistory();
+                message =  myGame.getHistory();
                 continue;
             default:
                 // make sure game is active
@@ -124,7 +124,8 @@ public static void main(String[] args)
                 else // try to make the move
                 {
                     int code = myGame.makeMove(input);
-                    message = "> > > " + Game.getMoveCodeText(code) + " ("+code+") < < <";
+                    if ( !Game.isMoveCodeLegal(code) )
+                        message = "> > > " + Game.getMoveCodeText(code) + " ("+code+") < < <";
                 }
         }
     }
@@ -285,6 +286,114 @@ private static void printLastRow()
     }
     
 
+
+
+
+
+    private static void replay(Game myGame)
+    {
+        while( myGame.takebackMove() ) {}
+                while ( myGame.redo() ) 
+                { 
+                    printHeader(myGame);
+                    printBoard(myGame);
+                    try { Thread.sleep(REPLAY_DELAY); }
+                    catch (InterruptedException ex)
+                    { Logger.getLogger(ChessDriver.class.getName()).log(Level.SEVERE, null, ex); }
+                }
+    }
+
+    private static Game loadPGN(String pgn)
+    {
+        if ( loader == null ) loader = new PGNLoader(pgn);
+        return loader.getNextGame(); 
+    }
+
+    private static String validate(Game myGame, String input)
+    {
+        //System.out.println("DEBUG:VALIDATE ");
+        if ( input.length() <= 9 ) return "Command usage: 'validate MOVE'";
+    
+        String move = input.substring(8).trim();
+        int code = myGame.validateMove( move );
+        return "Move[" +  move + "]: " 
+                + Game.getMoveCodeText(code)
+                + " ("+code+")";
+    }
+
+
+
+
+
+// ********************************************************
+// Game state listner callbacks
+public static class GameStateListener implements GameListener
+{
+    @Override
+    public void onGameStateUpdate(Game.State update)
+    {
+        System.out.println("[GS]Code(" + update.gameStateCode + "): " + update.status);
+        System.out.println("[GS]winner:" + update.winner );
+        System.out.println("[GS]winner:" + update.winner );
+        System.out.println("[GS]move:" + update.move.toString() );
+        System.out.println("[GS]isGameActive:" + update.isGameActive );
+        
+    }
+
+    @Override
+    public void onGameOver( Game.State update )
+    {
+        System.out.println();
+        System.out.println("****************************************************");
+        System.out.println("[GS] GAME OVER! " + update.status );
+        System.out.println("****************************************************");
+        System.out.println();
+    }
+
+        @Override
+        public void onGameStart(Game.State update)
+        {
+            System.out.println("Starting new game!");
+        }
+    }
+
+    /*******************************************************************
+ * ************     Quick Game PieceListener     *******************
+ ***************************************************************** */
+public static class MyPieceListener implements PieceListener
+{
+
+    @Override
+    public void onUpdate(ChessPiece piece)
+    {
+        System.out.println("[CP]"+piece.getUnicode() + " has updated.");
+    }
+
+    @Override
+    public void onMove(ChessPiece piece)
+    {
+        System.out.println("[CP]"+piece.getUnicode() + " has moved.");
+    }
+
+    @Override
+    public void onCapture(ChessPiece piece)
+    {
+        System.out.println("[CP]"+piece.getUnicode() + " has been captured.");
+    }
+
+    @Override
+    public void onPromote(ChessPiece piece, ChessPiece promoted)
+    {
+        promoted.registerPieceListener(new MyPieceListener() );
+        System.out.println("[CP]"+piece.getUnicode() + " has promoted.");
+    }
+}
+
+/*******************************************************************
+ * Test method for debuging
+ * Just runs through a list of moves
+ * @param myGame 
+ ********************************************************************/
 private static void debug(Game myGame)
 {
 
@@ -378,95 +487,4 @@ private static void debug(Game myGame)
     //*/ // END DEBUG
 }
 
-
-
-    private static void replay(Game myGame)
-    {
-        while( myGame.takebackMove() ) {}
-                while ( myGame.redo() ) 
-                { 
-                    printHeader(myGame);
-                    printBoard(myGame);
-                    try { Thread.sleep(REPLAY_DELAY); }
-                    catch (InterruptedException ex)
-                    { Logger.getLogger(ChessDriver.class.getName()).log(Level.SEVERE, null, ex); }
-                }
-    }
-
-    private static Game loadPGN(String pgn)
-    {
-        if ( loader == null ) loader = new PGNLoader(pgn);
-        return loader.getNextGame(); 
-    }
-
-    private static String validate(Game myGame, String input)
-    {
-        //System.out.println("DEBUG:VALIDATE ");
-        if ( input.length() <= 9 ) return "Command usage: 'validate MOVE'";
-    
-        String move = input.substring(8).trim();
-        int code = myGame.validateMove( move );
-        return "Move[" +  move + "]: " 
-                + Game.getMoveCodeText(code)
-                + " ("+code+")";
-    }
-
-
-
-
-
-// ********************************************************
-// Game state listner callbacks
-public static class GameStateListener implements GameListener
-{
-    @Override
-    public void onGameStateUpdate(Game.GameStats update)
-    {
-        System.out.println("[GS]Code(" 
-                + update.gameStateCode + "): " + update.gameState);
-    }
-
-    @Override
-    public void onGameOver( Game.GameStats update )
-    {
-        System.out.println();
-        System.out.println("****************************************************");
-        System.out.println("[GS] GAME OVER! (" 
-                + update.gameStateCode + "): " + update.gameState);
-        System.out.println("****************************************************");
-        System.out.println();
-    }
-}
-
-    /*******************************************************************
- * ************     Quick Game PieceListener     *******************
- ***************************************************************** */
-public static class MyPieceListener implements PieceListener
-{
-
-    @Override
-    public void onUpdate(ChessPiece piece)
-    {
-        System.out.println("[CP]"+piece.getUnicode() + " has updated.");
-    }
-
-    @Override
-    public void onMove(ChessPiece piece)
-    {
-        System.out.println("[CP]"+piece.getUnicode() + " has moved.");
-    }
-
-    @Override
-    public void onCapture(ChessPiece piece)
-    {
-        System.out.println("[CP]"+piece.getUnicode() + " has been captured.");
-    }
-
-    @Override
-    public void onPromote(ChessPiece piece, ChessPiece promoted)
-    {
-        promoted.addPieceListener(new MyPieceListener() );
-        System.out.println("[CP]"+piece.getUnicode() + " has promoted.");
-    }
-}
 }

@@ -1,5 +1,7 @@
 /*
- *
+ *  This is a console based driver for the chess library
+ *  This code if for developing/debugging purposes
+ *  It runs in netbeans console. It will likely not working properly in other console environments
  */
 package io.github.cryptomega.consolechess;
 

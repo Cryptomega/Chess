@@ -1,7 +1,9 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ *
+ * by Philip Schexnayder
+ *
+ * This code makes use of the pgn-parser library available at
+ * https://github.com/supareno/pgn-parser
  */
 package io.github.cryptomega.chess;
 

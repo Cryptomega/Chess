@@ -1,6 +1,8 @@
 /* 
- * 
+ * Chess Engine
+ *
  * TODO: add header info
+ *
  * @author Philip Schexnayder
  */
 package io.github.cryptomega.chess;
